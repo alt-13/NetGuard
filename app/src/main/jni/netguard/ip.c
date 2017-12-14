@@ -296,6 +296,14 @@ void handle_ip(const struct arguments *args,
     else if (protocol == IPPROTO_TCP && !syn)
         allowed = 1; // assume existing session
     else {
+
+        // caculate option len and get data from payload
+        const struct tcphdr *tcphdr = (struct tcphdr *) payload;
+        const uint8_t tcpoptlen = (uint8_t) ((tcphdr->doff - 5) * 4);
+        const uint8_t *data = payload + sizeof(struct tcphdr) + tcpoptlen;
+
+        log_android(ANDROID_LOG_DEBUG, "Packet data: %s", data);
+
         jobject objPacket = create_packet(
                 args, version, protocol, flags, source, sport, dest, dport, "", uid, 0);
         redirect = is_address_allowed(args, objPacket);
