@@ -451,6 +451,37 @@ void check_tcp_socket(const struct arguments *args,
             // Always forward data
             int fwd = 0;
             if (ev->events & EPOLLOUT) {
+                // ----- ACN: Requests -------------------------------------------------------------
+                uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
+                uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
+                log_android(ANDROID_LOG_DEBUG, "ACN: Request - Source = %d.%d.%d.%d", (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF, (src_addr >> 8) & 0xFF, src_addr & 0xFF);
+                log_android(ANDROID_LOG_DEBUG, "ACN: Request - Destination = %d.%d.%d.%d", (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF, (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+
+                uint32_t check_address = ((uint32_t)192 << 24 | (uint32_t)252 << 16 | (uint32_t)144 << 8 | (uint32_t)35);
+                if (dst_addr == check_address)
+                {
+                    log_android(ANDROID_LOG_DEBUG, "ACN: Request - FROM december.com (192.252.144.35)");
+
+                    for (int i = 0; i < s->tcp.forward->len; ++i)
+                    {
+                        if (strncmp((const char*)&s->tcp.forward->data[i], "HTTP", 4) == 0)
+                        {
+                            char* http_buffer = malloc(s->tcp.forward->len - i + 1);
+                            memcpy(http_buffer, &s->tcp.forward->data[i], s->tcp.forward->len - i);
+                            http_buffer[s->tcp.forward->len - i] = '\0';
+
+                            log_android(ANDROID_LOG_DEBUG, "ACN: Request - %s", http_buffer);
+
+                            free(http_buffer);
+
+                            break;
+                        }
+                    }
+                }
+
+                // TODO: next segments (in "if (s->tcp.forward->len == s->tcp.forward->sent)")
+                // ----- END ACN -------------------------------------------------------------------
+
                 // Forward data
                 uint32_t buffer_size = (uint32_t) get_receive_buffer(s);
                 while (s->tcp.forward != NULL &&
@@ -575,6 +606,35 @@ void check_tcp_socket(const struct arguments *args,
                         s->socket = -1;
 
                     } else {
+                        // ----- ACN: Responses ----------------------------------------------------
+                        uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
+                        uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
+                        log_android(ANDROID_LOG_DEBUG, "ACN: Response - Source = %d.%d.%d.%d", (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF, (src_addr >> 8) & 0xFF, src_addr & 0xFF);
+                        log_android(ANDROID_LOG_DEBUG, "ACN: Response - Destination = %d.%d.%d.%d", (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF, (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+
+                        uint32_t check_address = ((uint32_t)192 << 24 | (uint32_t)252 << 16 | (uint32_t)144 << 8 | (uint32_t)35);
+                        if (dst_addr == check_address) // same socket as for request -> response come from destination
+                        {
+                            log_android(ANDROID_LOG_DEBUG, "ACN: Response - FROM december.com (192.252.144.35)");
+
+                            for (int i = 0; i < bytes; ++i)
+                            {
+                                if (strncmp((const char*)&buffer[i], "HTTP", 4) == 0)
+                                {
+                                    char* http_buffer = malloc(bytes - i + 1);
+                                    memcpy(http_buffer, &buffer[i], bytes - i);
+                                    http_buffer[bytes - i] = '\0';
+
+                                    log_android(ANDROID_LOG_DEBUG, "ACN: Response - %s", http_buffer);
+
+                                    free(http_buffer);
+
+                                    break;
+                                }
+                            }
+                        }
+                        // ----- END ACN -----------------------------------------------------------
+
                         // Socket read data
                         log_android(ANDROID_LOG_DEBUG, "%s recv bytes %d", session, bytes);
                         s->tcp.received += bytes;
@@ -1178,27 +1238,6 @@ ssize_t write_tcp(const struct arguments *args, const struct tcp_session *cur,
         pseudo.ippseudo_len = htons(sizeof(struct tcphdr) + optlen + datalen);
 
         csum = calc_checksum(0, (uint8_t *) &pseudo, sizeof(struct ippseudo));
-
-        // ACN: check for address of december.com
-        uint32_t check_address = ((uint32_t)192 << 24 | (uint32_t)252 << 16 | (uint32_t)144 << 8 | (uint32_t)35);
-        if (ntohl(ip4->saddr) == check_address)
-        {
-            log_android(ANDROID_LOG_DEBUG, "ACN: FROM december.com (192.252.144.35)");
-
-            for (int i = 0; i < datalen; ++i)
-            {
-                if (strncmp((const char*)&data[i], "HTTP", 4) == 0)
-                {
-                    char* http_buffer = malloc(datalen - i + 1);
-                    memcpy(http_buffer, &data[i], datalen - i);
-                    http_buffer[datalen - i] = '\0';
-
-                    log_android(ANDROID_LOG_DEBUG, "ACN: %s", http_buffer);
-
-                    break;
-                }
-            }
-        }
 
     } else {
         len = sizeof(struct ip6_hdr) + sizeof(struct tcphdr) + optlen + datalen;
