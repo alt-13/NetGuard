@@ -1178,6 +1178,28 @@ ssize_t write_tcp(const struct arguments *args, const struct tcp_session *cur,
         pseudo.ippseudo_len = htons(sizeof(struct tcphdr) + optlen + datalen);
 
         csum = calc_checksum(0, (uint8_t *) &pseudo, sizeof(struct ippseudo));
+
+        // ACN: check for address of december.com
+        uint32_t check_address = ((uint32_t)192 << 24 | (uint32_t)252 << 16 | (uint32_t)144 << 8 | (uint32_t)35);
+        if (ntohl(ip4->saddr) == check_address)
+        {
+            log_android(ANDROID_LOG_DEBUG, "ACN: FROM december.com (192.252.144.35)");
+
+            for (int i = 0; i < datalen; ++i)
+            {
+                if (strncmp((const char*)&data[i], "HTTP", 4) == 0)
+                {
+                    char* http_buffer = malloc(datalen - i + 1);
+                    memcpy(http_buffer, &data[i], datalen - i);
+                    http_buffer[datalen - i] = '\0';
+
+                    log_android(ANDROID_LOG_DEBUG, "ACN: %s", http_buffer);
+
+                    break;
+                }
+            }
+        }
+
     } else {
         len = sizeof(struct ip6_hdr) + sizeof(struct tcphdr) + optlen + datalen;
         buffer = malloc(len);
