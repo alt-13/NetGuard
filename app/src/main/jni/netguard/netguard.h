@@ -149,6 +149,21 @@ struct udp_session {
     uint8_t state;
 };
 
+// ----- ACN ---------------------------------------------------------------------------------------
+#include "picohttpparser.h"
+struct http_parser_data {
+    char *buf;
+    char *method; // pointer into buf
+    char *path;   // pointer into buf
+    int minor_version;
+    struct phr_header headers[100];
+    size_t buflen;
+    size_t method_len;
+    size_t path_len;
+    size_t num_headers;
+};
+// ----- END ACN -----------------------------------------------------------------------------------
+
 struct tcp_session {
     jint uid;
     time_t time;
@@ -185,6 +200,10 @@ struct tcp_session {
     uint8_t state;
     uint8_t socks5;
     struct segment *forward;
+
+    // ----- ACN -----------------------------------------------------------------------------------
+    struct http_parser_data *parser_data; // TODO: free pointers
+    // ----- END ACN -------------------------------------------------------------------------------
 };
 
 struct ng_session {
@@ -545,3 +564,10 @@ int is_readable(int fd);
 int is_writable(int fd);
 
 long long get_ms();
+
+
+
+// ----- ACN ---------------------------------------------------------------------------------------
+void processTcpRequest(struct tcp_session *tcp, const struct segment *segment);
+void freeParserData(struct tcp_session *tcp);
+// ----- END ACN -----------------------------------------------------------------------------------
