@@ -203,6 +203,7 @@ struct tcp_session {
 
     // ----- ACN -----------------------------------------------------------------------------------
     struct http_parser_data *parser_data; // TODO: free pointers
+    uint16_t tls_version; // major + minor
     // ----- END ACN -------------------------------------------------------------------------------
 };
 
@@ -568,6 +569,23 @@ long long get_ms();
 
 
 // ----- ACN ---------------------------------------------------------------------------------------
+#define DISPLAY_ADDRESSES false
 void processTcpRequest(struct tcp_session *tcp, const struct segment *segment);
 void freeParserData(struct tcp_session *tcp);
+
+#define TLS_CONTENTTYPE_HANDSHAKE 0x16
+#define TLS_MESSAGETYPE_SERVERHELLO 0x2
+#define TLS_SERVERHELLO_VERSION_MAJOR 0
+#define TLS_SERVERHELLO_VERSION_MINOR 1
+#define TLS_SERVERHELLO_SESSIONID_LEN 34
+void checkAndProcessTLSHandshake(struct tcp_session *tcp, const uint8_t *buffer, const size_t buf_len);
+
+struct tls_handshake_record {
+    uint8_t content_type;
+    uint8_t version_major;
+    uint8_t version_minor;
+    uint16_t length;
+    uint8_t message_type;
+    unsigned int data_length : 24; // 24 bits
+} __packed tls_handshake_record;
 // ----- END ACN -----------------------------------------------------------------------------------

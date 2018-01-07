@@ -82,3 +82,50 @@ void freeParserData(struct tcp_session *tcp)
     free(tcp->parser_data);
     tcp->parser_data = NULL;
 }
+
+void checkAndProcessTLSHandshake(struct tcp_session *tcp, const uint8_t *buffer, const size_t buf_len)
+{
+    // https://en.wikipedia.org/wiki/Transport_Layer_Security#Handshake_protocol
+    // https://tools.ietf.org/html/rfc5246
+    if (!(buffer && buf_len >= sizeof(tls_handshake_record))) return;
+
+    struct tls_handshake_record *tls = (struct tls_handshake_record*) buffer;
+    if (tls->content_type != TLS_CONTENTTYPE_HANDSHAKE) return;
+
+    char partner[INET6_ADDRSTRLEN + 1];
+    inet_ntop(tcp->version == 4 ? AF_INET : AF_INET6,
+              tcp->version == 4 ? (const void *) &tcp->daddr.ip4 : (const void *) &tcp->daddr.ip6,
+              partner, sizeof(partner));
+    log_android(ANDROID_LOG_DEBUG, "ACN: Response - Found TLS Handshake with %s - Packet Length: %d - TCPSession: 0x%04x", partner, buf_len, tcp);
+    log_android(ANDROID_LOG_DEBUG, "ACN: TLS Handshake - MessageType = %d, "
+                                   "TLSVersion = 0x%04x (Major = %d, Minor = %d), "
+                                   "MessageLength = %d, "
+                                   "DataLength = %d",
+                                   tls->message_type,
+                                   (uint16_t)tls->version_major << 8 | (uint16_t)tls->version_minor, tls->version_major, tls->version_major,
+                                   ntohs(tls->length),
+                                   ntohl((uint32_t)tls->data_length << 8));
+
+    // for now assume that ServerHello data is not split into multiple TLSPlaintext records
+    // also ServerHello should be the first packet the server sends back and is very short so no TCP
+    // fragmentation should occur
+    // TODO: on error buffer until complete but after multiple runs it is usually more data, not less
+    if (tls->message_type != TLS_MESSAGETYPE_SERVERHELLO) return; // we only care about ServerHello
+
+    uint32_t data_length = ntohl((uint32_t)tls->data_length << 8);
+    if (buf_len < (sizeof(struct tls_handshake_record) + data_length))
+    {
+        log_android(ANDROID_LOG_DEBUG, "ACN: TLS Handshake - Only partial ServerHello found");
+        return;
+    }
+
+    // TODO: save in tcp session and propagate to java log
+    // TODO: in java: CipherSuite LookUp + secure or not
+    uint8_t *handshake_data = buffer + sizeof(struct tls_handshake_record);
+    uint8_t version_major = handshake_data[TLS_SERVERHELLO_VERSION_MAJOR];
+    uint8_t version_minor = handshake_data[TLS_SERVERHELLO_VERSION_MINOR];
+    uint8_t sessionid_len = handshake_data[TLS_SERVERHELLO_SESSIONID_LEN]; // after major + minor + 32byte random
+    uint16_t cipher_suite = ntohs(*(uint16_t*)&handshake_data[TLS_SERVERHELLO_SESSIONID_LEN + 1 + sessionid_len]);
+
+    log_android(ANDROID_LOG_DEBUG, "ACN: TLS Handshake - ServerHello - Major: %d, Minor: %d, CipherSuite: %04x", version_major, version_minor, cipher_suite);
+}

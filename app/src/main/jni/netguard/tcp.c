@@ -453,10 +453,16 @@ void check_tcp_socket(const struct arguments *args,
             if (ev->events & EPOLLOUT) {
 
                 // ----- ACN -----------------------------------------------------------------------
-                uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
-                uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
-                log_android(ANDROID_LOG_DEBUG, "ACN: Request - Source = %d.%d.%d.%d", (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF, (src_addr >> 8) & 0xFF, src_addr & 0xFF);
-                log_android(ANDROID_LOG_DEBUG, "ACN: Request - Destination = %d.%d.%d.%d", (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF, (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+                if (DISPLAY_ADDRESSES) {
+                    uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
+                    uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
+                    log_android(ANDROID_LOG_DEBUG, "ACN: Request - Source = %d.%d.%d.%d",
+                                (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF,
+                                (src_addr >> 8) & 0xFF, src_addr & 0xFF);
+                    log_android(ANDROID_LOG_DEBUG, "ACN: Request - Destination = %d.%d.%d.%d",
+                                (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF,
+                                (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+                }
 
                 /*
                 // Test http parser with split request
@@ -622,33 +628,20 @@ void check_tcp_socket(const struct arguments *args,
                         s->socket = -1;
 
                     } else {
-                        // ----- ACN: Responses ----------------------------------------------------
-                        /*uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
-                        uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
-                        log_android(ANDROID_LOG_DEBUG, "ACN: Response - Source = %d.%d.%d.%d", (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF, (src_addr >> 8) & 0xFF, src_addr & 0xFF);
-                        log_android(ANDROID_LOG_DEBUG, "ACN: Response - Destination = %d.%d.%d.%d", (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF, (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+                        // ----- ACN: --------------------------------------------------------------
+                        if (DISPLAY_ADDRESSES) {
+                            uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
+                            uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
+                            log_android(ANDROID_LOG_DEBUG, "ACN: Response - Source = %d.%d.%d.%d",
+                                        (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF,
+                                        (src_addr >> 8) & 0xFF, src_addr & 0xFF);
+                            log_android(ANDROID_LOG_DEBUG,
+                                        "ACN: Response - Destination = %d.%d.%d.%d",
+                                        (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF,
+                                        (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+                        }
 
-                        uint32_t check_address = ((uint32_t)192 << 24 | (uint32_t)252 << 16 | (uint32_t)144 << 8 | (uint32_t)35);
-                        if (dst_addr == check_address) // same socket as for request -> response come from destination
-                        {
-                            log_android(ANDROID_LOG_DEBUG, "ACN: Response - FROM december.com (192.252.144.35)");
-
-                            for (int i = 0; i < bytes; ++i)
-                            {
-                                if (strncmp((const char*)&buffer[i], "HTTP", 4) == 0)
-                                {
-                                    char* http_buffer = malloc(bytes - i + 1);
-                                    memcpy(http_buffer, &buffer[i], bytes - i);
-                                    http_buffer[bytes - i] = '\0';
-
-                                    log_android(ANDROID_LOG_DEBUG, "ACN: Response - %s", http_buffer);
-
-                                    free(http_buffer);
-
-                                    break;
-                                }
-                            }
-                        }*/
+                        checkAndProcessTLSHandshake(&s->tcp, buffer, (size_t) bytes); // we only care about ServerHello
                         // ----- END ACN -----------------------------------------------------------
 
                         // Socket read data
