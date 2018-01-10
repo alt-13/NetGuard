@@ -28,6 +28,7 @@ however it is impossible to guarantee NetGuard will work correctly on every devi
     <string name="menu_sort_uid">Sort on uid</string>
     <string name="menu_sort_data">Sort on data usage</string>
     <string name="menu_log">Show log</string>
+    <string name="menu_security">Show Security</string>
     <string name="menu_settings">Settings</string>
     <string name="menu_invite">Invite</string>
     <string name="menu_legend">Legend</string>
@@ -204,8 +205,10 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="msg_filter">Using filtering will cause Android to attribute data and power usage to NetGuard - Android assumes the data and power are being used by NetGuard, rather than the original apps</string>
     <string name="msg_filter4">Android 4 requires filtering to be enabled</string>
     <string name="msg_log_disabled">Traffic logging is disabled, use the switch above to enable logging. Traffic logging might result in extra battery usage.</string>
+    <string name="msg_security_disabled">Security monitoring is disabled, use the switch above to enable it.</string>
     <string name="msg_clear_rules">This will reset the rules and conditions to their default values</string>
     <string name="msg_reset_access">This will delete access attempt log lines without allow/block rules</string>
+    <string name="msg_reset_connections">This will delete all connections created until now</string>
     <string name="msg_import_last">Last import: %s</string>
     <string name="msg_downloading">Downloading\n%1s</string>
     <string name="msg_downloaded">Hosts file downloaded</string>
@@ -250,6 +253,8 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="title_lockdown">Allow in lockdown mode</string>
     <string name="title_related">Filter related</string>
     <string name="title_access">Access attempts</string>
+    <string name="title_sensitive">Sending Sensitive Data</string>
+    <string name="title_connections">Connections</string>
     <string name="title_precedence">Access rules take precedence over other rules</string>
     <string name="title_options">Options</string>
     <string name="title_notify">Notify internet access attempts</string>

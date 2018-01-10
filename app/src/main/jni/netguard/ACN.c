@@ -50,6 +50,13 @@ void processTcpRequest(struct tcp_session *tcp, const struct segment *segment)
         if (pdata->path_len > 0)
             log_android(ANDROID_LOG_DEBUG, "ACN: Request - path_len = %d", pdata->path_len);
 
+        // TODO: delete
+        if (pdata->buflen > 0)
+        {
+            pdata->buf[pdata->buflen - 1] = '\0';
+            log_android(ANDROID_LOG_DEBUG, "ACN: Request - Data = \n%s", pdata->buf);
+        }
+
         // TODO: process data
     }
     else if (pret == 0)
