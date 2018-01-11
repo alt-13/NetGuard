@@ -125,7 +125,7 @@
         </activity>
 
         <activity
-            android:name=".ActivitySecurity"
+            android:name="at.tugraz.netguard.ActivitySecurity"
             android:configChanges="orientation|screenSize"
             android:label="@string/menu_security"
             android:parentActivityName=".ActivityMain">

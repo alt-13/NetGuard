@@ -1,27 +1,6 @@
-package eu.faircode.netguard;
+package at.tugraz.netguard;
 
-/*
-    This file is part of NetGuard.
-
-    NetGuard is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    NetGuard is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with NetGuard.  If not, see <http://www.gnu.org/licenses/>.
-
-    Copyright 2015-2017 by Marcel Bokhorst (M66B)
-*/
-
-import android.annotation.TargetApi;
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -29,19 +8,13 @@ import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.support.v4.app.NotificationManagerCompat;
 import android.support.v4.content.ContextCompat;
-import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v4.widget.CompoundButtonCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -52,13 +25,9 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SubMenu;
-import android.view.TouchDelegate;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.CursorAdapter;
 import android.widget.Filter;
 import android.widget.Filterable;
@@ -67,7 +36,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupMenu;
-import android.widget.RelativeLayout;
+import android.widget.TableLayout;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
@@ -75,6 +44,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import eu.faircode.netguard.ActivityPro;
+import eu.faircode.netguard.AdapterAccess;
+import eu.faircode.netguard.DatabaseHelper;
+import eu.faircode.netguard.IAB;
+import eu.faircode.netguard.R;
+import eu.faircode.netguard.Rule;
+import eu.faircode.netguard.ServiceSinkhole;
+import eu.faircode.netguard.Util;
 
 public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHolder> implements Filterable {
     private static final String TAG = "NetGuard.Adapter";
@@ -110,7 +88,11 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
         public TextView tvDisabled;
 
         public ListView lvAccess;
+        public ListView lvKeywords;
         public ImageButton btnClearAccess;
+
+        public ImageButton btnAddKeyword;
+        public TableLayout tlKeywords;
 
         public IconLoader iconLoader = null;
 
@@ -132,6 +114,9 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
 
             lvAccess = itemView.findViewById(R.id.lvAccess);
             btnClearAccess = itemView.findViewById(R.id.btnClearAccess);
+
+            btnAddKeyword = itemView.findViewById(R.id.btnAddKeyword);
+            lvKeywords = itemView.findViewById(R.id.lvKeywords);
         }
     }
 
@@ -246,6 +231,11 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
         // Show access rules
         if (rule.expanded) {
             // Access the database when expanded only
+
+            final AdapterKeyword adapterKeyword = new AdapterKeyword(context,
+                    DatabaseHelper.getInstance(context).getKeywords());
+            holder.lvKeywords.setAdapter(adapterKeyword);
+
             final AdapterAccess badapter = new AdapterAccess(context,
                     DatabaseHelper.getInstance(context).getAccess(rule.uid));
             holder.lvAccess.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -373,6 +363,9 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
 
             holder.lvAccess.setAdapter(badapter);
         } else {
+            holder.lvKeywords.setAdapter(null);
+            holder.lvKeywords.setOnItemClickListener(null);
+
             holder.lvAccess.setAdapter(null);
             holder.lvAccess.setOnItemClickListener(null);
         }
@@ -389,6 +382,22 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                             notifyDataSetChanged();
                         if (rv != null)
                             rv.scrollToPosition(holder.getAdapterPosition());
+                    }
+                });
+            }
+        });
+
+        // Add keyword to regex search in http
+        holder.btnAddKeyword.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Util.stringInputDialog(view.getContext(), R.string.msg_add_keyword, new Util.InputListener() {
+                    @Override
+                    public void onOk(String input) {
+                        if (!input.isEmpty()) {
+                            // add keyword to list
+                            DatabaseHelper.getInstance(context).insertKeyword(rule.uid, input);
+                        }
                     }
                 });
             }

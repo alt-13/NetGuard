@@ -50,11 +50,13 @@ import android.preference.PreferenceManager;
 import android.support.v4.net.ConnectivityManagerCompat;
 import android.support.v7.app.AlertDialog;
 import android.telephony.TelephonyManager;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -587,6 +589,37 @@ public class Util {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         // Do nothing
+                    }
+                })
+                .create().show();
+    }
+
+    public interface InputListener {
+        void onOk(String input);
+    }
+
+    public static void stringInputDialog(Context context, int explanation, final InputListener listener) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.stringinput, null, false);
+
+        final EditText input = view.findViewById(R.id.etInput);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+
+        TextView tvExplanation = view.findViewById(R.id.tvExplanation);
+        tvExplanation.setText(explanation);
+        new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        listener.onOk(input.getText().toString());
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
                     }
                 })
                 .create().show();

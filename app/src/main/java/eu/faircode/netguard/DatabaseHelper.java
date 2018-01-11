@@ -51,6 +51,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
     private static List<AccessChangedListener> accessChangedListeners = new ArrayList<>();
     private static List<ForwardChangedListener> forwardChangedListeners = new ArrayList<>();
+    private static List<KeywordsChangedListener> keywordsChangedListeners = new ArrayList<>();
 
     private static HandlerThread hthread = null;
     private static Handler handler = null;
@@ -60,6 +61,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private final static int MSG_LOG = 1;
     private final static int MSG_ACCESS = 2;
     private final static int MSG_FORWARD = 3;
+    private final static int MSG_KEYWORDS = 4;
 
     private SharedPreferences prefs;
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -123,6 +125,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createTableDns(db);
         createTableForward(db);
         createTableApp(db);
+
+        createTableKeywords(db);
     }
 
     @Override
@@ -216,6 +220,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", enabled INTEGER NOT NULL" +
                 ");");
         db.execSQL("CREATE UNIQUE INDEX idx_package ON app(package)");
+    }
+
+    private void createTableKeywords(SQLiteDatabase db) {
+        Log.i(TAG, "Creating keywords table");
+        db.execSQL("CREATE TABLE keywords (" +
+                " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
+                ", uid INTEGER  NOT NULL" +
+                ", keyword TEXT NOT NULL" +
+                ", occurred INTEGER NOT NULL" +
+                ");");
+        db.execSQL("CREATE UNIQUE INDEX idx_keywords ON keywords(uid, keyword)");
     }
 
     private boolean columnExists(SQLiteDatabase db, String table, String column) {
@@ -1095,6 +1110,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         forwardChangedListeners.remove(listener);
     }
 
+    public void addKeywordsChangedListener(KeywordsChangedListener listener) {
+        keywordsChangedListeners.add(listener);
+    }
+
+    public void removeKeywordsChangedListener(KeywordsChangedListener listener) {
+        keywordsChangedListeners.remove(listener);
+    }
+
     private void notifyLogChanged() {
         Message msg = handler.obtainMessage();
         msg.what = MSG_LOG;
@@ -1110,6 +1133,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private void notifyForwardChanged() {
         Message msg = handler.obtainMessage();
         msg.what = MSG_FORWARD;
+        handler.sendMessage(msg);
+    }
+
+    private void notifyKeywordsChanged() {
+        Message msg = handler.obtainMessage();
+        msg.what = MSG_KEYWORDS;
         handler.sendMessage(msg);
     }
 
@@ -1146,7 +1175,53 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 } catch (Throwable ex) {
                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                 }
+        } else if (msg.what == MSG_KEYWORDS) {
+            for (KeywordsChangedListener listener : keywordsChangedListeners)
+                try {
+                    listener.onChanged();
+                } catch (Throwable ex) {
+                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                }
         }
+    }
+
+    public Cursor getKeywords() {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            String query = "SELECT ID AS _id, *";
+            query += " FROM keywords";
+            query += " ORDER BY uid";
+            return db.rawQuery(query, new String[]{});
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public void insertKeyword(int uid, String keyword) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("uid", uid);
+                cv.put("keyword", keyword);
+                cv.put("occurred", false);
+
+                if (db.insert("keywords", null, cv) == -1)
+                    Log.e(TAG, "Insert keyword failed");
+
+                db.setTransactionSuccessful();
+
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyKeywordsChanged();
     }
 
     public interface LogChangedListener {
@@ -1158,6 +1233,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public interface ForwardChangedListener {
+        void onChanged();
+    }
+
+    public interface KeywordsChangedListener {
         void onChanged();
     }
 }

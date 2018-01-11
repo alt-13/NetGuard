@@ -79,6 +79,8 @@ import com.google.android.gms.ads.MobileAds;
 
 import java.util.List;
 
+import at.tugraz.netguard.ActivitySecurity;
+
 public class ActivityMain extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "NetGuard.Main";
 

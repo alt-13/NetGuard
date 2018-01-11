@@ -1,11 +1,10 @@
-package eu.faircode.netguard;
+package at.tugraz.netguard;
 
 // ACN Task 2
 
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -22,6 +21,12 @@ import android.widget.CompoundButton;
 import android.widget.TextView;
 
 import java.util.List;
+
+import eu.faircode.netguard.DatabaseHelper;
+import eu.faircode.netguard.R;
+import eu.faircode.netguard.Rule;
+import eu.faircode.netguard.ServiceSinkhole;
+import eu.faircode.netguard.Util;
 
 public class ActivitySecurity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "NetGuard.Security";
@@ -186,9 +191,24 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         }
     };
 
+    private DatabaseHelper.KeywordsChangedListener keywordsChangedListener = new DatabaseHelper.KeywordsChangedListener() {
+        @Override
+        public void onChanged() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (adapter != null && adapter.isLive())
+                        adapter.notifyDataSetChanged();
+                }
+            });
+        }
+    };
+
     @Override
     protected void onResume() {
         Log.i(TAG, "Resume");
+
+        DatabaseHelper.getInstance(this).addKeywordsChangedListener(keywordsChangedListener);
 
         DatabaseHelper.getInstance(this).addAccessChangedListener(accessChangedListener);
         if (adapter != null)
@@ -202,6 +222,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         Log.i(TAG, "Pause");
         super.onPause();
 
+        DatabaseHelper.getInstance(this).removeKeywordsChangedListener(keywordsChangedListener);
         DatabaseHelper.getInstance(this).removeAccessChangedListener(accessChangedListener);
     }
 }

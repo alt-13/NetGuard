@@ -115,15 +115,30 @@
             android:layout_marginTop="4dp"
             android:orientation="vertical">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_weight="1"
-                android:text="@string/title_sensitive"
-                android:textAppearance="@style/TextTitle" />
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_weight="1"
+                    android:text="@string/title_sensitive"
+                    android:textAppearance="@style/TextTitle" />
+
+                <ImageButton
+                    android:id="@+id/btnAddKeyword"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:src="?attr/iconAdd" />
+
+            </LinearLayout>
 
             <TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/tlKeywords"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="20dp"
@@ -167,6 +182,13 @@
                         android:gravity="center" />
                 </TableRow>
             </TableLayout>
+
+            <eu.faircode.netguard.ExpandedListView
+                android:id="@+id/lvKeywords"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" />
+
         </LinearLayout>
 
         <LinearLayout
