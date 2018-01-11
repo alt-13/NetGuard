@@ -18,20 +18,10 @@
 */
 
 #include "netguard.h"
-#include "picohttpparser.h"
 
 int max_tun_msg = 0;
 extern int loglevel;
 extern FILE *pcap_file;
-
-int parsing = 0;
-
-char *buf;
-ssize_t rret;
-char *method, *path;
-int pret, minor_version;
-struct phr_header headers[100];
-size_t buflen = 0, prevbuflen = 0, method_len, path_len, num_headers;
 
 uint16_t get_mtu() {
     return 10000;
@@ -138,9 +128,6 @@ void handle_ip(const struct arguments *args,
     char flags[10];
     int flen = 0;
     uint8_t *payload;
-    uint8_t ipoptlen; // declaration moved up from ipv4 handler block
-
-    log_android(ANDROID_LOG_WARN, "IP packet length %d", length);
 
     // Get protocol, addresses & payload
     uint8_t version = (*pkt) >> 4;
@@ -152,8 +139,6 @@ void handle_ip(const struct arguments *args,
 
         struct iphdr *ip4hdr = (struct iphdr *) pkt;
 
-        log_android(ANDROID_LOG_WARN, "TCP packet total length %d", ip4hdr->tot_len);
-
         protocol = ip4hdr->protocol;
         saddr = &ip4hdr->saddr;
         daddr = &ip4hdr->daddr;
@@ -164,7 +149,7 @@ void handle_ip(const struct arguments *args,
             return;
         }
 
-        ipoptlen = (uint8_t) ((ip4hdr->ihl - 5) * 4);
+        uint8_t ipoptlen = (uint8_t) ((ip4hdr->ihl - 5) * 4);
         payload = (uint8_t *) (pkt + sizeof(struct iphdr) + ipoptlen);
 
         if (ntohs(ip4hdr->tot_len) != length) {
@@ -308,87 +293,9 @@ void handle_ip(const struct arguments *args,
     struct allowed *redirect = NULL;
     if (protocol == IPPROTO_UDP && has_udp_session(args, pkt, payload))
         allowed = 1; // could be a lingering/blocked session
-    else if (protocol == IPPROTO_TCP && !syn) {
+    else if (protocol == IPPROTO_TCP && !syn)
         allowed = 1; // assume existing session
-        if (strcmp(source, "192.252.144.35") == 0 || strcmp(dest, "192.252.144.35") == 0) {
-            const struct tcphdr *tcphdr = (struct tcphdr *) payload;
-            const uint8_t tcpoptlen = (uint8_t) ((tcphdr->doff - 5) * 4);
-            size_t datalen = length - sizeof(struct iphdr) - ipoptlen - sizeof(struct tcphdr) - tcpoptlen;
-
-            log_android(ANDROID_LOG_DEBUG, "+ Packet datalen: %d, Sequence number: %d", datalen, ntohs(tcphdr->th_seq));
-            log_android(ANDROID_LOG_DEBUG, "+ Packet datalen: %d, Sequence number: %d", datalen, ntohs(tcphdr->ack_seq));
-        }
-    }
     else {
-
-        if (strcmp(source, "192.252.144.35") == 0 || strcmp(dest, "192.252.144.35") == 0) {
-
-            // caculate option len and get data from payload
-            struct iphdr *ip4hdr = (struct iphdr *) pkt;
-            const struct tcphdr *tcphdr = (struct tcphdr *) payload;
-            const uint8_t tcpoptlen = (uint8_t) ((tcphdr->doff - 5) * 4);
-            uint8_t *data = payload + sizeof(struct tcphdr) + tcpoptlen;
-            size_t datalen = length - sizeof(struct iphdr) - ipoptlen - sizeof(struct tcphdr) - tcpoptlen;
-            //size_t abc = length;
-//            datalen = datalen - sizeof(struct iphdr);
-//            datalen = datalen - ipoptlen;
-//            datalen = datalen - sizeof(struct tcphdr);
-//            datalen = datalen - tcpoptlen;
-
-            log_android(ANDROID_LOG_DEBUG, "- Packet datalen: %d, Sequence number: %d", datalen,  ntohs(tcphdr->th_seq));
-            log_android(ANDROID_LOG_DEBUG, "- Packet datalen: %d, Sequence number: %d", datalen, ntohs(tcphdr->ack_seq));
-
-            prevbuflen = buflen;
-
-            if (!parsing) {
-                buf = realloc(buf, datalen);
-                memcpy(buf, data, datalen);
-                buflen = datalen;
-                parsing = 1;
-            } else {
-                if (datalen > 0) {
-                    buf = realloc(buf, buflen + datalen);
-                    memcpy(buf + buflen, data, datalen);
-                    buflen = buflen + datalen;
-                }
-            }
-
-            //buflen += rret;
-
-            //if (rret <= 0)while ((rret = read(sock, buf + buflen, sizeof(buf) - buflen)) == -1 && errno == EINTR);
-            //    return IOError;
-
-            /* parse the request */
-            num_headers = sizeof(headers) / sizeof(headers[0]);
-            pret = phr_parse_request(buf, buflen, &method, &method_len, &path, &path_len,
-                                     &minor_version, headers, &num_headers, prevbuflen);
-            if (pret > 0) {
-                /* successfully parsed the request */
-                parsing = 0;
-                log_android(ANDROID_LOG_DEBUG, "Parsing finished successfully");
-
-                /*printf("request is %d bytes long\n", pret);
-                printf("method is %.*s\n", (int)method_len, method);
-                printf("path is %.*s\n", (int)path_len, path);
-                printf("HTTP version is 1.%d\n", minor_version);
-                printf("headers:\n");
-                for (int i = 0; i != num_headers; ++i) {
-                    printf("%.*s: %.*s\n", (int)headers[i].name_len, headers[i].name,
-                           (int)headers[i].value_len, headers[i].value);
-                }*/
-            } else if (pret == -1) {
-                parsing = 0;
-                log_android(ANDROID_LOG_DEBUG, "Parsing error");
-            } else if (pret == -2) {
-                /* request is incomplete, continue the parsing */
-                log_android(ANDROID_LOG_DEBUG, "Still parsing");
-            }
-            /*if (buflen == sizeof(buf))
-                return RequestIsTooLongError;*/
-
-            log_android(ANDROID_LOG_DEBUG, "Packet data: %s", data);
-        }
-
         jobject objPacket = create_packet(
                 args, version, protocol, flags, source, sport, dest, dport, "", uid, 0);
         redirect = is_address_allowed(args, objPacket);
