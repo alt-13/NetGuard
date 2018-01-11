@@ -1,6 +1,15 @@
 #include "netguard.h"
 #include "string.h"
 #include "picohttpparser.h"
+#include "regex.h"
+#include <sys/system_properties.h> // IMEI
+
+#define REGEX_IMEI "[0-9]{15,15}"
+
+void processData(char *search_regex, char *data);
+void freeParserData(struct tcp_session *tcp);
+char* getIMEI(bool* is_regex);
+bool validateIMEI(char* imei);
 
 void processTcpRequest(struct tcp_session *tcp, const struct segment *segment)
 {
@@ -41,23 +50,24 @@ void processTcpRequest(struct tcp_session *tcp, const struct segment *segment)
 
     if (pret > 0)
     {
-        log_android(ANDROID_LOG_DEBUG, "ACN: Request - SUCCESS");
+        if (pdata->buflen > 0) {
+            log_android(ANDROID_LOG_DEBUG, "ACN: Request - SUCCESS");
 
-        if (pdata->num_headers > 0)
-            log_android(ANDROID_LOG_DEBUG, "ACN: Request - num_headers = %d", pdata->num_headers);
-        if (pdata->method_len > 0)
-            log_android(ANDROID_LOG_DEBUG, "ACN: Request - method_len = %d", pdata->method_len);
-        if (pdata->path_len > 0)
-            log_android(ANDROID_LOG_DEBUG, "ACN: Request - path_len = %d", pdata->path_len);
+            if (pdata->num_headers > 0)
+                log_android(ANDROID_LOG_DEBUG, "ACN: Request - num_headers = %d", pdata->num_headers);
+            if (pdata->method_len > 0)
+                log_android(ANDROID_LOG_DEBUG, "ACN: Request - method_len = %d", pdata->method_len);
+            if (pdata->path_len > 0)
+                log_android(ANDROID_LOG_DEBUG, "ACN: Request - path_len = %d", pdata->path_len);
 
-        // TODO: delete
-        if (pdata->buflen > 0)
-        {
-            pdata->buf[pdata->buflen - 1] = '\0';
+            // append '\0' at the end
+            pdata->buf = realloc(pdata->buf, pdata->buflen + 1);
+            pdata->buf[pdata->buflen] = '\0';
             log_android(ANDROID_LOG_DEBUG, "ACN: Request - Data = \n%s", pdata->buf);
-        }
 
-        // TODO: process data
+            // process data
+            processData(NULL, (char *) pdata->buf);
+        }
     }
     else if (pret == 0)
     {
@@ -135,4 +145,95 @@ void checkAndProcessTLSHandshake(struct tcp_session *tcp, const uint8_t *buffer,
     uint16_t cipher_suite = ntohs(*(uint16_t*)&handshake_data[TLS_SERVERHELLO_SESSIONID_LEN + 1 + sessionid_len]);
 
     log_android(ANDROID_LOG_DEBUG, "ACN: TLS Handshake - ServerHello - Major: %d, Minor: %d, CipherSuite: %04x", version_major, version_minor, cipher_suite);
+}
+
+void processData(char *search_regex, char *data)
+{
+    regex_t regex;
+    int reti;
+    char msgbuf[100];
+
+    bool imei_regex;
+    char* imei = getIMEI(&imei_regex);
+
+    /* Compile regular expression */
+    reti = regcomp(&regex, "test123", REG_NOSUB);
+    if (reti) {
+        log_android(ANDROID_LOG_DEBUG, "ACN: Could not compile regex");
+        return;
+    }
+
+    /* Execute regular expression */
+    reti = regexec(&regex, data, 0, NULL, 0);
+    if (!reti) {
+        log_android(ANDROID_LOG_DEBUG, "ACN: Match");
+    }
+    else if (reti == REG_NOMATCH) {
+        log_android(ANDROID_LOG_DEBUG, "ACN: No match");
+    }
+    else {
+        regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+        log_android(ANDROID_LOG_DEBUG, "ACN: Regex match failed: %s", msgbuf);
+        return;
+    }
+
+    /* Free memory allocated to the pattern buffer by regcomp() */
+    regfree(&regex);
+}
+
+char* getIMEI(bool* is_regex)
+{
+    static char* imei = NULL;
+
+    if (imei == NULL) {
+        char *imei_start = malloc(PROP_VALUE_MAX);
+
+        //returns the string length of the value.
+        int ir = __system_property_get("ro.gsm.imei", imei_start);
+
+        if (ir > 0)
+        {
+            imei_start[15] = '\0';
+
+            imei = realloc(imei, 16 * sizeof(char));
+            strcpy(imei, imei_start);
+
+            if (is_regex) is_regex = false;
+        }
+        else
+        {
+            imei = REGEX_IMEI;
+            if (is_regex) is_regex = true;
+        }
+
+        free(imei_start);
+
+        log_android(ANDROID_LOG_DEBUG, "ACN: IMEI = %s", imei);
+    }
+
+    return imei;
+}
+
+bool validateIMEI(char* imei)
+{
+    // https://en.wikipedia.org/wiki/International_Mobile_Equipment_Identity#Check_digit_computation
+    int validation_digit = imei[14] - '0';
+    log_android(ANDROID_LOG_DEBUG, "ACN: Validation Digit = %d", validation_digit);
+
+    int sum = 0;
+    for (int i = 0; i < 14; ++i)
+    {
+        if (i % 2 == 1)
+        {
+            int doubled = 2 * (imei[i] - '0');
+            sum += (doubled >= 10) ? 1 + (doubled - 10) : doubled;
+        }
+        else
+        {
+            sum += (imei[i] - '0');
+        }
+    }
+
+    if ((sum + validation_digit) % 10 == 0) return true;
+    return false;
 }
