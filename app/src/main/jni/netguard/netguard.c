@@ -523,6 +523,34 @@ void log_packet(const struct arguments *args, jobject jpacket) {
 #endif
 }
 
+void log_connection(const struct arguments *args, jobject jpacket) {
+#ifdef PROFILE_JNI
+    float mselapsed;
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+#endif
+
+    jclass clsService = (*args->env)->GetObjectClass(args->env, args->instance);
+
+    const char *signature = "(Leu/faircode/netguard/Packet;)V";
+    if (midLogPacket == NULL)
+        midLogPacket = jniGetMethodID(args->env, clsService, "logConnection", signature);
+
+    (*args->env)->CallVoidMethod(args->env, args->instance, midLogPacket, jpacket);
+    jniCheckException(args->env);
+
+    (*args->env)->DeleteLocalRef(args->env, clsService);
+    (*args->env)->DeleteLocalRef(args->env, jpacket);
+
+#ifdef PROFILE_JNI
+    gettimeofday(&end, NULL);
+    mselapsed = (end.tv_sec - start.tv_sec) * 1000.0 +
+                (end.tv_usec - start.tv_usec) / 1000.0;
+    if (mselapsed > PROFILE_JNI)
+        log_android(ANDROID_LOG_WARN, "log_packet %f", mselapsed);
+#endif
+}
+
 static jmethodID midDnsResolved = NULL;
 static jmethodID midInitRR = NULL;
 jfieldID fidQTime = NULL;

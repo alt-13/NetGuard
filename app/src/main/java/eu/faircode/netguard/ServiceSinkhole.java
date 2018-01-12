@@ -183,6 +183,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private static final int MSG_STATS_UPDATE = 3;
     private static final int MSG_PACKET = 4;
     private static final int MSG_USAGE = 5;
+    private static final int MSG_CONNECTION = 6;
 
     private enum State {none, waiting, enforcing, stats}
 
@@ -726,6 +727,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         usage((Usage) msg.obj);
                         break;
 
+                    case MSG_CONNECTION:
+                        log((Packet) msg.obj, msg.arg1, msg.arg2 > 0);
+
                     default:
                         Log.e(TAG, "Unknown log message=" + msg.what);
                 }
@@ -760,6 +764,38 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     lock.readLock().unlock();
                 }
             }
+        }
+
+        private void log_connection(Packet packet, int connection, boolean interactive) {
+            // Get settings
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
+            boolean log = prefs.getBoolean("log", false);
+            boolean log_app = prefs.getBoolean("log_app", false);
+
+            DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
+
+            // Get real name
+            String dname = dh.getQName(packet.uid, packet.daddr);
+
+            // TODO da: log in db and maybe other stuff
+
+            /*
+            // Traffic log
+            if (log)
+                dh.insertLog(packet, dname, connection, interactive);
+
+            // Application log
+            if (log_app && packet.uid >= 0 && !(packet.uid == 0 && packet.protocol == 17 && packet.dport == 53)) {
+                if (!(packet.protocol == 6 /* TCP */ /*|| packet.protocol == 17 /* UDP *//*))
+                    packet.dport = 0;
+                if (dh.updateAccess(packet, dname, -1)) {
+                    lock.readLock().lock();
+                    if (!mapNotify.containsKey(packet.uid) || mapNotify.get(packet.uid))
+                        showAccessNotification(packet.uid);
+                    lock.readLock().unlock();
+                }
+            }
+            */
         }
 
         private void usage(Usage usage) {
@@ -1791,6 +1827,16 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         Message msg = logHandler.obtainMessage();
         msg.obj = packet;
         msg.what = MSG_PACKET;
+        msg.arg1 = (last_connected ? (last_metered ? 2 : 1) : 0);
+        msg.arg2 = (last_interactive ? 1 : 0);
+        logHandler.sendMessage(msg);
+    }
+
+    // Called from native code
+    private void logConnection(Packet packet) {
+        Message msg = logHandler.obtainMessage();
+        msg.obj = packet;
+        msg.what = MSG_CONNECTION;
         msg.arg1 = (last_connected ? (last_metered ? 2 : 1) : 0);
         msg.arg2 = (last_interactive ? 1 : 0);
         logHandler.sendMessage(msg);

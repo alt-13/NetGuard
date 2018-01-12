@@ -526,6 +526,8 @@ void log_android(int prio, const char *fmt, ...);
 
 void log_packet(const struct arguments *args, jobject jpacket);
 
+void log_connection(const struct arguments *args, jobject jpacket);
+
 void dns_resolved(const struct arguments *args,
                   const char *qname, const char *aname, const char *resource, int ttl);
 
