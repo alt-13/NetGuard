@@ -137,52 +137,6 @@
 
             </LinearLayout>
 
-            <TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                android:id="@+id/tlKeywords"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="20dp"
-                android:layout_marginTop="4dp" >
-                <TableRow>
-                    <TextView
-                        android:text="IMEI:"
-                        android:textAppearance="@style/TextMedium"
-                        android:paddingRight="20dp"
-                        android:gravity="right" />
-                    <TextView
-                        android:text="No"
-                        android:textColor="#00FF00"
-                        android:textAppearance="@style/TextMedium"
-                        android:gravity="center" />
-                </TableRow>
-
-                <TableRow >
-                    <TextView
-                        android:text="Number:"
-                        android:textAppearance="@style/TextMedium"
-                        android:paddingRight="20dp"
-                        android:gravity="right" />
-                    <TextView
-                        android:text="Yes"
-                        android:textColor="#FF0000"
-                        android:textAppearance="@style/TextMedium"
-                        android:gravity="center" />
-                </TableRow>
-
-                <TableRow >
-                    <TextView
-                        android:text="GPS:"
-                        android:textAppearance="@style/TextMedium"
-                        android:paddingRight="20dp"
-                        android:gravity="right" />
-                    <TextView
-                        android:text="Yes"
-                        android:textColor="#FF0000"
-                        android:textAppearance="@style/TextMedium"
-                        android:gravity="center" />
-                </TableRow>
-            </TableLayout>
-
             <eu.faircode.netguard.ExpandedListView
                 android:id="@+id/lvKeywords"
                 android:layout_width="match_parent"
@@ -212,7 +166,7 @@
                     android:textAppearance="@style/TextTitle" />
 
                 <ImageButton
-                    android:id="@+id/btnClearAccess"
+                    android:id="@+id/btnClearConnections"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
@@ -220,7 +174,7 @@
             </LinearLayout>
 
             <eu.faircode.netguard.ExpandedListView
-                android:id="@+id/lvAccess"
+                android:id="@+id/lvConnections"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp" />

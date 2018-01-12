@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_host"
+        android:enabled="false"
+        android:title="">
+        <menu/>
+    </item>
+    <item
+        android:id="@+id/menu_whois"
+        android:title=""/>
+    <item
+        android:id="@+id/menu_port"
+        android:title=""/>
+    <item
+        android:id="@+id/menu_time"
+        android:enabled="false"
+        android:title=""/>
+</menu>

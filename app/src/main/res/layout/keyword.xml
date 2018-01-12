@@ -8,14 +8,16 @@
 
     <TextView
         android:id="@+id/tvKeyword"
-        android:layout_width="60dp"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
-        android:textAppearance="@style/TextMedium" />
+        android:textAppearance="@style/TextMedium"
+        android:gravity="left"/>
 
     <TextView
         android:id="@+id/tvOccurred"
-        android:layout_width="60dp"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
-        android:textAppearance="@style/TextMedium" />
+        android:textAppearance="@style/TextMedium"
+        android:gravity="left" />
 
 </LinearLayout>

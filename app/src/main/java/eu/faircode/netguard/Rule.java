@@ -179,6 +179,11 @@ public class Rule {
                     this.enabled = isEnabled(info, context);
 
                     dh.addApp(this.packageName, this.name, this.system, this.internet, this.enabled);
+
+                    // ACN add hardcoded keywords
+                    // uid/keyword is unique key in db, insert will fail for duplicates
+                    dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_imei));
+                    dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_phone_number));
                 }
             } finally {
                 if (cursor != null)

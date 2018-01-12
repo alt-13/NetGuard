@@ -2,6 +2,7 @@ package at.tugraz.netguard;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -37,7 +38,23 @@ public class AdapterKeyword extends CursorAdapter {
         TextView tvKeyword = view.findViewById(R.id.tvKeyword);
         TextView tvOccurred = view.findViewById(R.id.tvOccurred);
 
+        // Set values
         tvKeyword.setText(keyword);
-        tvOccurred.setText(Boolean.toString(occurred));
+
+        // Color occurrences
+        if (occurred) {
+            tvOccurred.setText(context.getResources().getString(R.string.keyword_detected));
+            tvOccurred.setTextColor(Color.RED);
+        } else {
+            tvOccurred.setText(context.getResources().getString(R.string.keyword_not_detected));
+            tvOccurred.setTextColor(Color.GREEN);
+        }
+
+        // Highlight hardcoded keywords
+        if (keyword.equals(context.getResources().getString(R.string.keyword_imei)) ||
+            keyword.equals(context.getResources().getString(R.string.keyword_phone_number))) {
+
+            tvKeyword.setTextColor(Color.MAGENTA);
+        }
     }
 }

@@ -128,7 +128,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createTableForward(db);
         createTableApp(db);
         createTableKeywords(db);
-        createTableConnections(db);
+        createTableConnection(db);
     }
 
     @Override
@@ -235,9 +235,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE UNIQUE INDEX idx_keywords ON keywords(uid, keyword)");
     }
 
-    private void createTableConnections(SQLiteDatabase db) {
-        Log.i(TAG, "Creating connections table");
-        db.execSQL("CREATE TABLE connections (" +
+    private void createTableConnection(SQLiteDatabase db) {
+        Log.i(TAG, "Creating connection table");
+        db.execSQL("CREATE TABLE connection (" +
                 " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
                 ", uid INTEGER NOT NULL" +
                 ", cipher_suite INTEGER NOT NULL" +
@@ -246,7 +246,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", time INTEGER NOT NULL" +
                 ", keywords TEXT NOT NULL" +
                 ");");
-        db.execSQL("CREATE UNIQUE INDEX idx_connections ON connections(uid, daddr, dport)");
+        db.execSQL("CREATE UNIQUE INDEX idx_connection ON connection(uid, daddr, dport)");
     }
 
     private boolean columnExists(SQLiteDatabase db, String table, String column) {
@@ -1224,14 +1224,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    public Cursor getKeywords() {
+    public Cursor getKeywords(int uid) {
         lock.readLock().lock();
         try {
             SQLiteDatabase db = this.getReadableDatabase();
             String query = "SELECT ID AS _id, *";
             query += " FROM keywords";
-            query += " ORDER BY uid";
-            return db.rawQuery(query, new String[]{});
+            query += " WHERE uid = ?";
+            query += " ORDER BY _id";
+            return db.rawQuery(query, new String[]{Integer.toString(uid)});
         } finally {
             lock.readLock().unlock();
         }
@@ -1295,7 +1296,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("time", packet.time);
 
                 // There is a segmented index on uid, daddr and dport
-                rows = db.update("connections", cv, "uid = ? AND daddr = ? AND dport = ?",
+                rows = db.update("connection", cv, "uid = ? AND daddr = ? AND dport = ?",
                         new String[]{
                                 Integer.toString(packet.uid),
                                 dname == null ? packet.daddr : dname,
@@ -1307,10 +1308,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     cv.put("dport", packet.dport);
                     cv.put("cipher_suite", cipherSuite);
 
-                    if (db.insert("connections", null, cv) == -1)
-                        Log.e(TAG, "Insert connections failed");
+                    if (db.insert("connection", null, cv) == -1)
+                        Log.e(TAG, "Insert connection failed");
                 } else if (rows != 1)
-                    Log.e(TAG, "Update connections failed rows=" + rows);
+                    Log.e(TAG, "Update connection failed rows=" + rows);
 
                 db.setTransactionSuccessful();
             } finally {
@@ -1322,6 +1323,43 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         notifyAccessChanged();
         return (rows == 0);
+    }
+
+    public void clearConnection(int uid) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                db.delete("connection", "uid = ?", new String[]{Integer.toString(uid)});
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyConnectionChanged();
+    }
+
+    public Cursor getConnection(int uid) {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on uid
+            // There is no index on time for write performance
+            String query = "SELECT c.ID AS _id, c.*";
+            query += ", (SELECT COUNT(DISTINCT d.qname) FROM dns d WHERE d.resource IN (SELECT d1.resource FROM dns d1 WHERE d1.qname = c.daddr)) count";
+            query += " FROM connection c";
+            query += " WHERE c.uid = ?";
+            query += " ORDER BY c.time DESC";
+            query += " LIMIT 50";
+            return db.rawQuery(query, new String[]{Integer.toString(uid)});
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     public interface LogChangedListener {

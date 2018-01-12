@@ -46,7 +46,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import eu.faircode.netguard.ActivityPro;
-import eu.faircode.netguard.AdapterAccess;
 import eu.faircode.netguard.DatabaseHelper;
 import eu.faircode.netguard.IAB;
 import eu.faircode.netguard.R;
@@ -87,12 +86,11 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
         public TextView tvInternet;
         public TextView tvDisabled;
 
-        public ListView lvAccess;
-        public ListView lvKeywords;
-        public ImageButton btnClearAccess;
+        public ListView lvConnections;
+        public ImageButton btnClearConnections;
 
+        public ListView lvKeywords;
         public ImageButton btnAddKeyword;
-        public TableLayout tlKeywords;
 
         public IconLoader iconLoader = null;
 
@@ -112,8 +110,8 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
             tvInternet = itemView.findViewById(R.id.tvInternet);
             tvDisabled = itemView.findViewById(R.id.tvDisabled);
 
-            lvAccess = itemView.findViewById(R.id.lvAccess);
-            btnClearAccess = itemView.findViewById(R.id.btnClearAccess);
+            lvConnections = itemView.findViewById(R.id.lvConnections);
+            btnClearConnections = itemView.findViewById(R.id.btnClearConnections);
 
             btnAddKeyword = itemView.findViewById(R.id.btnAddKeyword);
             lvKeywords = itemView.findViewById(R.id.lvKeywords);
@@ -233,7 +231,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
             // Access the database when expanded only
 
             final AdapterKeyword adapterKeyword = new AdapterKeyword(context,
-                    DatabaseHelper.getInstance(context).getKeywords());
+                    DatabaseHelper.getInstance(context).getKeywords(rule.uid));
             holder.lvKeywords.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, final int bposition, long bid) {
@@ -243,51 +241,50 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     final int uid = cursor.getInt(cursor.getColumnIndex("uid"));
                     final String keyword = cursor.getString(cursor.getColumnIndex("keyword"));
 
-                    PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
-                    popup.inflate(R.menu.keyword);
+                    if (!keyword.equals(context.getResources().getString(R.string.keyword_imei)) &&
+                        !keyword.equals(context.getResources().getString(R.string.keyword_phone_number))) {
 
-                    popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                        @Override
-                        public boolean onMenuItemClick(MenuItem menuItem) {
-                            int menu = menuItem.getItemId();
-                            boolean result = false;
-                            switch (menu) {
-                                case R.id.menu_delete:
-                                    DatabaseHelper.getInstance(context).deleteKeyword(uid, keyword);
-                                    result = true;
-                                    break;
+                        PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
+                        popup.inflate(R.menu.keyword);
+
+                        popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                            @Override
+                            public boolean onMenuItemClick(MenuItem menuItem) {
+                                int menu = menuItem.getItemId();
+                                boolean result = false;
+                                switch (menu) {
+                                    case R.id.menu_delete:
+                                        DatabaseHelper.getInstance(context).deleteKeyword(uid, keyword);
+                                        result = true;
+                                        break;
+                                }
+
+                                return result;
                             }
+                        });
 
-                            return result;
-                        }
-                    });
-
-                    popup.show();
+                        popup.show();
+                    }
                 }
             });
             holder.lvKeywords.setAdapter(adapterKeyword);
 
-            final AdapterAccess badapter = new AdapterAccess(context,
-                    DatabaseHelper.getInstance(context).getAccess(rule.uid));
-            holder.lvAccess.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            final AdapterConnection adapterConnection = new AdapterConnection(context,
+                    DatabaseHelper.getInstance(context).getConnection(rule.uid));
+            holder.lvConnections.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, final int bposition, long bid) {
                     PackageManager pm = context.getPackageManager();
-                    Cursor cursor = (Cursor) badapter.getItem(bposition);
+                    Cursor cursor = (Cursor) adapterConnection.getItem(bposition);
                     final long id = cursor.getLong(cursor.getColumnIndex("ID"));
-                    final int version = cursor.getInt(cursor.getColumnIndex("version"));
-                    final int protocol = cursor.getInt(cursor.getColumnIndex("protocol"));
                     final String daddr = cursor.getString(cursor.getColumnIndex("daddr"));
                     final int dport = cursor.getInt(cursor.getColumnIndex("dport"));
                     long time = cursor.getLong(cursor.getColumnIndex("time"));
-                    int block = cursor.getInt(cursor.getColumnIndex("block"));
 
                     PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
-                    popup.inflate(R.menu.access);
+                    popup.inflate(R.menu.connection);
 
-                    popup.getMenu().findItem(R.id.menu_host).setTitle(
-                            Util.getProtocolName(protocol, version, false) + " " +
-                                    daddr + (dport > 0 ? "/" + dport : ""));
+                    popup.getMenu().findItem(R.id.menu_host).setTitle(daddr + (dport > 0 ? "/" + dport : ""));
 
                     SubMenu sub = popup.getMenu().findItem(R.id.menu_host).getSubMenu();
                     boolean multiple = false;
@@ -303,9 +300,6 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                             alt.close();
                     }
                     popup.getMenu().findItem(R.id.menu_host).setEnabled(multiple);
-
-                    markPro(popup.getMenu().findItem(R.id.menu_allow), ActivityPro.SKU_FILTER);
-                    markPro(popup.getMenu().findItem(R.id.menu_block), ActivityPro.SKU_FILTER);
 
                     // Whois
                     final Intent lookupIP = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.tcpiputils.com/whois-lookup/" + daddr));
@@ -339,76 +333,33 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                                     context.startActivity(lookupPort);
                                     result = true;
                                     break;
-
-                                case R.id.menu_allow:
-                                    if (IAB.isPurchased(ActivityPro.SKU_FILTER, context)) {
-                                        DatabaseHelper.getInstance(context).setAccess(id, 0);
-                                        ServiceSinkhole.reload("allow host", context, false);
-                                    } else
-                                        context.startActivity(new Intent(context, ActivityPro.class));
-                                    result = true;
-                                    break;
-
-                                case R.id.menu_block:
-                                    if (IAB.isPurchased(ActivityPro.SKU_FILTER, context)) {
-                                        DatabaseHelper.getInstance(context).setAccess(id, 1);
-                                        ServiceSinkhole.reload("block host", context, false);
-                                    } else
-                                        context.startActivity(new Intent(context, ActivityPro.class));
-                                    result = true;
-                                    break;
-
-                                case R.id.menu_reset:
-                                    DatabaseHelper.getInstance(context).setAccess(id, -1);
-                                    ServiceSinkhole.reload("reset host", context, false);
-                                    result = true;
-                                    break;
                             }
-
-                            if (menu == R.id.menu_allow || menu == R.id.menu_block || menu == R.id.menu_reset)
-                                new AsyncTask<Object, Object, Long>() {
-                                    @Override
-                                    protected Long doInBackground(Object... objects) {
-                                        return DatabaseHelper.getInstance(context).getHostCount(rule.uid, false);
-                                    }
-
-                                    @Override
-                                    protected void onPostExecute(Long hosts) {
-                                        rule.hosts = hosts;
-                                        notifyDataSetChanged();
-                                    }
-                                }.execute();
 
                             return result;
                         }
                     });
 
-                    if (block == 0)
-                        popup.getMenu().removeItem(R.id.menu_allow);
-                    else if (block == 1)
-                        popup.getMenu().removeItem(R.id.menu_block);
-
                     popup.show();
                 }
             });
 
-            holder.lvAccess.setAdapter(badapter);
+            holder.lvConnections.setAdapter(adapterConnection);
         } else {
             holder.lvKeywords.setAdapter(null);
             holder.lvKeywords.setOnItemClickListener(null);
 
-            holder.lvAccess.setAdapter(null);
-            holder.lvAccess.setOnItemClickListener(null);
+            holder.lvConnections.setAdapter(null);
+            holder.lvConnections.setOnItemClickListener(null);
         }
 
-        // Clear access log
-        holder.btnClearAccess.setOnClickListener(new View.OnClickListener() {
+        // Clear connection log
+        holder.btnClearConnections.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Util.areYouSure(view.getContext(), R.string.msg_reset_connections, new Util.DoubtListener() {
                     @Override
                     public void onSure() {
-                        DatabaseHelper.getInstance(context).clearAccess(rule.uid, true);
+                        DatabaseHelper.getInstance(context).clearConnection(rule.uid);
                         if (!live)
                             notifyDataSetChanged();
                         if (rv != null)
@@ -442,11 +393,18 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
         if (holder.iconLoader != null)
             holder.iconLoader.cancel();
 
-        CursorAdapter adapter = (CursorAdapter) holder.lvAccess.getAdapter();
-        if (adapter != null) {
-            Log.i(TAG, "Closing access cursor");
-            adapter.changeCursor(null);
-            holder.lvAccess.setAdapter(null);
+        CursorAdapter connectionsAdapter = (CursorAdapter) holder.lvConnections.getAdapter();
+        if (connectionsAdapter != null) {
+            Log.i(TAG, "Closing connections cursor");
+            connectionsAdapter.changeCursor(null);
+            holder.lvConnections.setAdapter(null);
+        }
+
+        CursorAdapter adapterKeywords = (CursorAdapter) holder.lvKeywords.getAdapter();
+        if (adapterKeywords != null) {
+            Log.i(TAG, "Closing keywords cursor");
+            adapterKeywords.changeCursor(null);
+            holder.lvKeywords.setAdapter(null);
         }
     }
 

@@ -178,7 +178,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         }
     }
 
-    private DatabaseHelper.AccessChangedListener accessChangedListener = new DatabaseHelper.AccessChangedListener() {
+    private DatabaseHelper.ConnectionChangedListener connectionChangedListener = new DatabaseHelper.ConnectionChangedListener() {
         @Override
         public void onChanged() {
             runOnUiThread(new Runnable() {
@@ -210,7 +210,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
 
         DatabaseHelper.getInstance(this).addKeywordChangedListener(keywordChangedListener);
 
-        DatabaseHelper.getInstance(this).addAccessChangedListener(accessChangedListener);
+        DatabaseHelper.getInstance(this).addConnectionChangedListener(connectionChangedListener);
         if (adapter != null)
             adapter.notifyDataSetChanged();
 
@@ -223,6 +223,6 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         super.onPause();
 
         DatabaseHelper.getInstance(this).removeKeywordChangedListener(keywordChangedListener);
-        DatabaseHelper.getInstance(this).removeAccessChangedListener(accessChangedListener);
+        DatabaseHelper.getInstance(this).removeConnectionChangedListener(connectionChangedListener);
     }
 }

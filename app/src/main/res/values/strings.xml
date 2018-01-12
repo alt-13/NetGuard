@@ -306,6 +306,11 @@ Your internet traffic is not being sent to a remote VPN server.</string>
 
     <!-- ACN -->
     <string name="title_delete">Delete</string>
+    <string name="keyword_detected">detected</string>
+    <string name="keyword_not_detected">not detected</string>
+    <string name="keyword_imei">IMEI</string>
+    <string name="keyword_phone_number">phone number</string>
+
 
     <string-array name="themeNames">
         <item>teal/orange</item>
