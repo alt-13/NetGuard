@@ -234,6 +234,37 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
 
             final AdapterKeyword adapterKeyword = new AdapterKeyword(context,
                     DatabaseHelper.getInstance(context).getKeywords());
+            holder.lvKeywords.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, final int bposition, long bid) {
+                    PackageManager pm = context.getPackageManager();
+                    Cursor cursor = (Cursor) adapterKeyword.getItem(bposition);
+
+                    final int uid = cursor.getInt(cursor.getColumnIndex("uid"));
+                    final String keyword = cursor.getString(cursor.getColumnIndex("keyword"));
+
+                    PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
+                    popup.inflate(R.menu.keyword);
+
+                    popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem menuItem) {
+                            int menu = menuItem.getItemId();
+                            boolean result = false;
+                            switch (menu) {
+                                case R.id.menu_delete:
+                                    DatabaseHelper.getInstance(context).deleteKeyword(uid, keyword);
+                                    result = true;
+                                    break;
+                            }
+
+                            return result;
+                        }
+                    });
+
+                    popup.show();
+                }
+            });
             holder.lvKeywords.setAdapter(adapterKeyword);
 
             final AdapterAccess badapter = new AdapterAccess(context,

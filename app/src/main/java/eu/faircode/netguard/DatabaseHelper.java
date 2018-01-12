@@ -51,7 +51,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
     private static List<AccessChangedListener> accessChangedListeners = new ArrayList<>();
     private static List<ForwardChangedListener> forwardChangedListeners = new ArrayList<>();
-    private static List<KeywordsChangedListener> keywordsChangedListeners = new ArrayList<>();
+    private static List<KeywordChangedListener> keywordChangedListeners = new ArrayList<>();
+    private static List<ConnectionChangedListener> connectionChangedListener = new ArrayList<>();
 
     private static HandlerThread hthread = null;
     private static Handler handler = null;
@@ -61,7 +62,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private final static int MSG_LOG = 1;
     private final static int MSG_ACCESS = 2;
     private final static int MSG_FORWARD = 3;
-    private final static int MSG_KEYWORDS = 4;
+    private final static int MSG_KEYWORD = 4;
+    private final static int MSG_CONNECTION = 5;
 
     private SharedPreferences prefs;
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -125,8 +127,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createTableDns(db);
         createTableForward(db);
         createTableApp(db);
-
         createTableKeywords(db);
+        createTableConnections(db);
     }
 
     @Override
@@ -231,6 +233,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", occurred INTEGER NOT NULL" +
                 ");");
         db.execSQL("CREATE UNIQUE INDEX idx_keywords ON keywords(uid, keyword)");
+    }
+
+    private void createTableConnections(SQLiteDatabase db) {
+        Log.i(TAG, "Creating connections table");
+        db.execSQL("CREATE TABLE connections (" +
+                " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
+                ", uid INTEGER NOT NULL" +
+                ", cipher_suite INTEGER NOT NULL" +
+                ", daddr TEXT NOT NULL" +
+                ", dport INTEGER NOT NULL" +
+                ", time INTEGER NOT NULL" +
+                ", keywords TEXT NOT NULL" +
+                ");");
+        db.execSQL("CREATE UNIQUE INDEX idx_connections ON connections(uid, daddr, dport)");
     }
 
     private boolean columnExists(SQLiteDatabase db, String table, String column) {
@@ -1110,12 +1126,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         forwardChangedListeners.remove(listener);
     }
 
-    public void addKeywordsChangedListener(KeywordsChangedListener listener) {
-        keywordsChangedListeners.add(listener);
+    public void addKeywordChangedListener(KeywordChangedListener listener) {
+        keywordChangedListeners.add(listener);
     }
 
-    public void removeKeywordsChangedListener(KeywordsChangedListener listener) {
-        keywordsChangedListeners.remove(listener);
+    public void removeKeywordChangedListener(KeywordChangedListener listener) {
+        keywordChangedListeners.remove(listener);
+    }
+
+    public void addConnectionChangedListener(ConnectionChangedListener listener) {
+        connectionChangedListener.add(listener);
+    }
+
+    public void removeConnectionChangedListener(ConnectionChangedListener listener) {
+        connectionChangedListener.remove(listener);
     }
 
     private void notifyLogChanged() {
@@ -1136,9 +1160,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         handler.sendMessage(msg);
     }
 
-    private void notifyKeywordsChanged() {
+    private void notifyKeywordChanged() {
         Message msg = handler.obtainMessage();
-        msg.what = MSG_KEYWORDS;
+        msg.what = MSG_KEYWORD;
+        handler.sendMessage(msg);
+    }
+
+    private void notifyConnectionChanged() {
+        Message msg = handler.obtainMessage();
+        msg.what = MSG_CONNECTION;
         handler.sendMessage(msg);
     }
 
@@ -1175,8 +1205,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 } catch (Throwable ex) {
                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                 }
-        } else if (msg.what == MSG_KEYWORDS) {
-            for (KeywordsChangedListener listener : keywordsChangedListeners)
+
+        } else if (msg.what == MSG_KEYWORD) {
+            for (KeywordChangedListener listener : keywordChangedListeners)
+                try {
+                    listener.onChanged();
+                } catch (Throwable ex) {
+                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                }
+
+        } else if (msg.what == MSG_CONNECTION) {
+            for (ConnectionChangedListener listener : connectionChangedListener)
                 try {
                     listener.onChanged();
                 } catch (Throwable ex) {
@@ -1221,7 +1260,68 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             lock.writeLock().unlock();
         }
 
-        notifyKeywordsChanged();
+        notifyKeywordChanged();
+    }
+
+    public void deleteKeyword(int uid, String keyword) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                db.delete("keywords", "uid = ? AND keyword = ?",
+                        new String[]{Integer.toString(uid), keyword});
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyKeywordChanged();
+    }
+
+    public boolean updateConnection(Packet packet, String dname, int cipherSuite) {
+        int rows;
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("time", packet.time);
+
+                // There is a segmented index on uid, daddr and dport
+                rows = db.update("connections", cv, "uid = ? AND daddr = ? AND dport = ?",
+                        new String[]{
+                                Integer.toString(packet.uid),
+                                dname == null ? packet.daddr : dname,
+                                Integer.toString(packet.dport)});
+
+                if (rows == 0) {
+                    cv.put("uid", packet.uid);
+                    cv.put("daddr", dname == null ? packet.daddr : dname);
+                    cv.put("dport", packet.dport);
+                    cv.put("cipher_suite", cipherSuite);
+
+                    if (db.insert("connections", null, cv) == -1)
+                        Log.e(TAG, "Insert connections failed");
+                } else if (rows != 1)
+                    Log.e(TAG, "Update connections failed rows=" + rows);
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyAccessChanged();
+        return (rows == 0);
     }
 
     public interface LogChangedListener {
@@ -1236,7 +1336,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         void onChanged();
     }
 
-    public interface KeywordsChangedListener {
+    public interface KeywordChangedListener {
+        void onChanged();
+    }
+
+    public interface ConnectionChangedListener {
         void onChanged();
     }
 }

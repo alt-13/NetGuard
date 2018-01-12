@@ -191,7 +191,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         }
     };
 
-    private DatabaseHelper.KeywordsChangedListener keywordsChangedListener = new DatabaseHelper.KeywordsChangedListener() {
+    private DatabaseHelper.KeywordChangedListener keywordChangedListener = new DatabaseHelper.KeywordChangedListener() {
         @Override
         public void onChanged() {
             runOnUiThread(new Runnable() {
@@ -208,7 +208,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
     protected void onResume() {
         Log.i(TAG, "Resume");
 
-        DatabaseHelper.getInstance(this).addKeywordsChangedListener(keywordsChangedListener);
+        DatabaseHelper.getInstance(this).addKeywordChangedListener(keywordChangedListener);
 
         DatabaseHelper.getInstance(this).addAccessChangedListener(accessChangedListener);
         if (adapter != null)
@@ -222,7 +222,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         Log.i(TAG, "Pause");
         super.onPause();
 
-        DatabaseHelper.getInstance(this).removeKeywordsChangedListener(keywordsChangedListener);
+        DatabaseHelper.getInstance(this).removeKeywordChangedListener(keywordChangedListener);
         DatabaseHelper.getInstance(this).removeAccessChangedListener(accessChangedListener);
     }
 }

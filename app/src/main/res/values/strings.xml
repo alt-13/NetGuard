@@ -304,6 +304,9 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="title_pro_challenge">Challenge</string>
     <string name="title_pro_reponse">Response</string>
 
+    <!-- ACN -->
+    <string name="title_delete">Delete</string>
+
     <string-array name="themeNames">
         <item>teal/orange</item>
         <item>blue/orange</item>
