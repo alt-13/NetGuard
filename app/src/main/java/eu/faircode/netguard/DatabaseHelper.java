@@ -32,14 +32,22 @@ import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.ObjectOutput;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import at.tugraz.netguard.ACNPacket;
+import at.tugraz.netguard.ACNUtils;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "NetGuard.Database";
@@ -240,13 +248,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE connection (" +
                 " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
                 ", uid INTEGER NOT NULL" +
-                ", cipher_suite INTEGER NOT NULL" +
+                ", version INTEGER NOT NULL" +
                 ", daddr TEXT NOT NULL" +
                 ", dport INTEGER NOT NULL" +
                 ", time INTEGER NOT NULL" +
                 ", keywords TEXT NOT NULL" +
+                ", cipher_suite INTEGER NOT NULL" +
+                ", tls_version INTEGER NOT NULL" +
+                ", tls_compression INTEGER NOT NULL" +
                 ");");
-        db.execSQL("CREATE UNIQUE INDEX idx_connection ON connection(uid, daddr, dport)");
+        db.execSQL("CREATE UNIQUE INDEX idx_connection ON connection(uid, version, daddr, dport)");
     }
 
     private boolean columnExists(SQLiteDatabase db, String table, String column) {
@@ -1284,29 +1295,60 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         notifyKeywordChanged();
     }
 
-    public boolean updateConnection(Packet packet, String dname, int cipherSuite) {
+    public boolean updateConnection(ACNPacket packet, String dname) {
         int rows;
 
         lock.writeLock().lock();
         try {
-            SQLiteDatabase db = this.getWritableDatabase();
+            SQLiteDatabase db = this.getWritableDatabase(); // read + writable
+            HashSet<String> keywords = new HashSet<String>();
+
+            // new keywords have to be added to current keywords
+            String query = "SELECT keywords FROM connection WHERE uid = ? AND version = ? AND daddr = ? AND dport = ?";
+            Cursor c = db.rawQuery(query, new String[]{Integer.toString(packet.uid), Integer.toString(packet.version),
+                    dname == null ? packet.daddr : dname, Integer.toString(packet.dport)});
+
+            // Log.d(TAG, "ACN: updateConnection query - ROWS = " + c.getCount() + " - COLUMNS = " + c.getColumnCount() + " - IndexKeywords = " + c.getColumnIndex("keywords"));
+
+            if (c.getCount() > 0) {
+                c.moveToFirst();
+
+                Object o = ACNUtils.byteArrayToObject(c.getBlob(c.getColumnIndex("keywords")));
+                if (o != null && o instanceof HashSet)
+                {
+                    keywords = (HashSet<String>) o;
+
+                    Log.d(TAG, "ACN: UpdateConnection - " + dname + "/" + packet.dport + " - Keywords = " + keywords.size() + " - " + keywords);
+                }
+            }
+            c.close();
+
             db.beginTransactionNonExclusive();
             try {
                 ContentValues cv = new ContentValues();
                 cv.put("time", packet.time);
+                if (packet.getNumKeywords() > 0)
+                    keywords.addAll(Arrays.asList(packet.keywords));
+                cv.put("keywords", ACNUtils.objectToByteArray(keywords));
 
-                // There is a segmented index on uid, daddr and dport
-                rows = db.update("connection", cv, "uid = ? AND daddr = ? AND dport = ?",
+                cv.put("cipher_suite", packet.cipherSuite);
+                cv.put("tls_version", packet.tlsVersion);
+                cv.put("tls_compression", packet.tlsCompression);
+
+
+                // There is a segmented index on uid, version, protocol, daddr and dport
+                rows = db.update("connection", cv, "uid = ? AND version = ? AND daddr = ? AND dport = ?",
                         new String[]{
                                 Integer.toString(packet.uid),
+                                Integer.toString(packet.version),
                                 dname == null ? packet.daddr : dname,
                                 Integer.toString(packet.dport)});
 
                 if (rows == 0) {
                     cv.put("uid", packet.uid);
+                    cv.put("version", packet.version);
                     cv.put("daddr", dname == null ? packet.daddr : dname);
                     cv.put("dport", packet.dport);
-                    cv.put("cipher_suite", cipherSuite);
 
                     if (db.insert("connection", null, cv) == -1)
                         Log.e(TAG, "Insert connection failed");
@@ -1321,7 +1363,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             lock.writeLock().unlock();
         }
 
-        notifyAccessChanged();
+        notifyConnectionChanged();
         return (rows == 0);
     }
 

@@ -2,11 +2,15 @@ package at.tugraz.netguard;
 
 // ACN Task 2
 
+import android.Manifest;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -28,8 +32,9 @@ import eu.faircode.netguard.Rule;
 import eu.faircode.netguard.ServiceSinkhole;
 import eu.faircode.netguard.Util;
 
-public class ActivitySecurity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
+public class ActivitySecurity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, ActivityCompat.OnRequestPermissionsResultCallback {
     private static final String TAG = "NetGuard.Security";
+    private static final int PHONE_REQUEST_CODE = 123;
 
     private boolean running = false;
 
@@ -46,6 +51,19 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         super.onCreate(savedInstanceState);
         setContentView(R.layout.securitymonitoring);
         running = true;
+
+        // set context of ACN utils
+        ACNUtils.context = this;
+
+        // get permission to extract imei and number (api level > 23)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_REQUEST_CODE);
+        }
+        else
+        {
+            ACNUtils.enableSecurityAnalysis(true);
+            ACNUtils.setIMEI(ACNUtils.getIMEI());
+        }
 
         // Action bar
         View actionView = getLayoutInflater().inflate(R.layout.actionsecurity, null, false);
@@ -103,6 +121,16 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
 
         // Fill application list
         updateApplicationList(getIntent().getStringExtra(null));
+    }
+
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
+    {
+        if (requestCode == PHONE_REQUEST_CODE) {
+            Log.i(TAG, "READ_PHONE_STATE was granted: " + (grantResults[0] == PackageManager.PERMISSION_GRANTED));
+
+            ACNUtils.enableSecurityAnalysis(true);
+            ACNUtils.setIMEI(ACNUtils.getIMEI());
+        }
     }
 
     private void updateApplicationList(final String search) {

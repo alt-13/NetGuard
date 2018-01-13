@@ -203,7 +203,6 @@ struct tcp_session {
 
     // ----- ACN -----------------------------------------------------------------------------------
     struct http_parser_data *parser_data; // TODO: free pointers
-    uint16_t tls_version; // major + minor
     // ----- END ACN -------------------------------------------------------------------------------
 };
 
@@ -572,14 +571,14 @@ long long get_ms();
 
 // ----- ACN ---------------------------------------------------------------------------------------
 #define DISPLAY_ADDRESSES false
-void processTcpRequest(struct tcp_session *tcp, const struct segment *segment);
+void processTcpRequest(const struct arguments *args, struct tcp_session *tcp, const struct segment *segment);
 
 #define TLS_CONTENTTYPE_HANDSHAKE 0x16
 #define TLS_MESSAGETYPE_SERVERHELLO 0x2
 #define TLS_SERVERHELLO_VERSION_MAJOR 0
 #define TLS_SERVERHELLO_VERSION_MINOR 1
 #define TLS_SERVERHELLO_SESSIONID_LEN 34
-void checkAndProcessTLSHandshake(struct tcp_session *tcp, const uint8_t *buffer, const size_t buf_len);
+void checkAndProcessTLSHandshake(const struct arguments *args, struct tcp_session *tcp, const uint8_t *buffer, const size_t buf_len);
 
 struct tls_handshake_record {
     uint8_t content_type;
@@ -589,4 +588,18 @@ struct tls_handshake_record {
     uint8_t message_type;
     unsigned int data_length : 24; // 24 bits
 } __packed tls_handshake_record;
+
+void JNI_enableSecurityAnalysis(JNIEnv *env, jobject instance, jboolean val);
+void JNI_setIMEI(JNIEnv *env, jobject instance, jstring imei);
+
+jobject create_acnpacket(const struct arguments *args,
+                         jint version,
+                         const char *dest,
+                         jint dport,
+                         jint uid,
+                         int num_keywords,
+                         const char **keywords,
+                         jint cipher_suite,
+                         jint tls_version,
+                         jint tls_compression);
 // ----- END ACN -----------------------------------------------------------------------------------

@@ -111,6 +111,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import at.tugraz.netguard.ACNPacket;
+
 public class ServiceSinkhole extends VpnService implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "NetGuard.Service";
 
@@ -728,7 +730,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         break;
 
                     case MSG_CONNECTION:
-                        log((Packet) msg.obj, msg.arg1, msg.arg2 > 0);
+                        log_connection((ACNPacket) msg.obj, msg.arg1, msg.arg2 > 0);
 
                     default:
                         Log.e(TAG, "Unknown log message=" + msg.what);
@@ -766,10 +768,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             }
         }
 
-        private void log_connection(Packet packet, int connection, boolean interactive) {
+        private void log_connection(ACNPacket packet, int connection, boolean interactive) {
             // Get settings
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ServiceSinkhole.this);
-            boolean log = prefs.getBoolean("log", false);
+            boolean security = prefs.getBoolean("security", false);
             boolean log_app = prefs.getBoolean("log_app", false);
 
             DatabaseHelper dh = DatabaseHelper.getInstance(ServiceSinkhole.this);
@@ -777,25 +779,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             // Get real name
             String dname = dh.getQName(packet.uid, packet.daddr);
 
-            // TODO da: log in db and maybe other stuff
-
-            /*
-            // Traffic log
-            if (log)
-                dh.insertLog(packet, dname, connection, interactive);
-
-            // Application log
-            if (log_app && packet.uid >= 0 && !(packet.uid == 0 && packet.protocol == 17 && packet.dport == 53)) {
-                if (!(packet.protocol == 6 /* TCP */ /*|| packet.protocol == 17 /* UDP *//*))
-                    packet.dport = 0;
-                if (dh.updateAccess(packet, dname, -1)) {
-                    lock.readLock().lock();
-                    if (!mapNotify.containsKey(packet.uid) || mapNotify.get(packet.uid))
-                        showAccessNotification(packet.uid);
-                    lock.readLock().unlock();
-                }
+            // log the connection
+            if (security && log_app && packet.uid >= 0) {
+                dh.updateConnection(packet, dname);
             }
-            */
         }
 
         private void usage(Usage usage) {
@@ -1833,7 +1820,8 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     }
 
     // Called from native code
-    private void logConnection(Packet packet) {
+    private void logConnection(ACNPacket packet) {
+        // Log.d(TAG, "ACNPacket = " + packet.toString());
         Message msg = logHandler.obtainMessage();
         msg.obj = packet;
         msg.what = MSG_CONNECTION;

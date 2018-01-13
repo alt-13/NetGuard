@@ -529,7 +529,7 @@ void check_tcp_socket(const struct arguments *args,
                     } else {
                         // ----- ACN ---------------------------------------------------------------
                         // process only if successfully sent
-                        processTcpRequest(&s->tcp, s->tcp.forward);
+                        processTcpRequest(args, &s->tcp, s->tcp.forward);
                         // ----- END ACN -----------------------------------------------------------
 
                         fwd = 1;
@@ -641,7 +641,7 @@ void check_tcp_socket(const struct arguments *args,
                                         (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
                         }
 
-                        checkAndProcessTLSHandshake(&s->tcp, buffer, (size_t) bytes); // we only care about ServerHello
+                        checkAndProcessTLSHandshake(args, &s->tcp, buffer, (size_t) bytes); // we only care about ServerHello
                         // ----- END ACN -----------------------------------------------------------
 
                         // Socket read data
