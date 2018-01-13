@@ -55,16 +55,6 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         // set context of ACN utils
         ACNUtils.context = this;
 
-        // get permission to extract imei and number (api level > 23)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_REQUEST_CODE);
-        }
-        else
-        {
-            ACNUtils.enableSecurityAnalysis(true);
-            ACNUtils.setIMEI(ACNUtils.getIMEI());
-        }
-
         // Action bar
         View actionView = getLayoutInflater().inflate(R.layout.actionsecurity, null, false);
         SwitchCompat swEnabled = actionView.findViewById(R.id.swEnabled);
@@ -81,6 +71,16 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         organization = prefs.getBoolean("organization", false);
         boolean security = prefs.getBoolean("security", false);
 
+        // get permission to extract imei and number (api level > 23)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_REQUEST_CODE);
+        }
+        else
+        {
+            ACNUtils.enableSecurityAnalysis(security);
+            ACNUtils.setIMEI(ACNUtils.getIMEI());
+        }
+
         // Show disabled message
         TextView tvDisabled = findViewById(R.id.tvDisabled);
         tvDisabled.setVisibility(security ? View.GONE : View.VISIBLE);
@@ -90,6 +90,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         swEnabled.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 prefs.edit().putBoolean("security", isChecked).apply();
+                ACNUtils.enableSecurityAnalysis(isChecked);
             }
         });
 

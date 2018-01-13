@@ -7,16 +7,20 @@
 
 #define REGEX_IMEI "[0-9]{15,15}"
 
+#define KEYWORD_IMEI "IMEI"
+
 void processData(const struct arguments *args, struct tcp_session *tcp, char *data);
-void freeParserData(struct tcp_session *tcp);
 bool validateIMEI(char* imei);
 bool checkIMEIRegex(char *search, char *data);
 bool checkRegex(char *search, char *data);
 bool checkContains(char *search, char *data);
 
+char *g_phone_imei = NULL;
+bool security_analysis_enabled = false;
+
 void processTcpRequest(const struct arguments *args, struct tcp_session *tcp, const struct segment *segment)
 {
-    if (!(segment && segment->data && segment->len > 0)) return;
+    if (!(security_analysis_enabled && segment && segment->data && segment->len > 0)) return;
 
     log_android(ANDROID_LOG_DEBUG, "ACN: Request - Segment Length: %d - TCPSession: 0x%04x", segment->len, tcp);
 
@@ -48,9 +52,12 @@ void processTcpRequest(const struct arguments *args, struct tcp_session *tcp, co
 
     size_t prevbuflen = pdata->buflen;
     pdata->buflen = pdata->buflen + segment->len;
-    // TODO checked if only one request
+
     int pret = phr_parse_request(pdata->buf, pdata->buflen, &pdata->method, &pdata->method_len, &pdata->path, &pdata->path_len,
                                     &pdata->minor_version, pdata->headers, &pdata->num_headers, prevbuflen);
+
+    // log_android(ANDROID_LOG_DEBUG, "ACN: Request - PRET = %d, SegmentLen = %d", pret, segment->len);
+    // => one segment contains at most 1 request
 
     if (pret > 0)
     {
@@ -67,7 +74,9 @@ void processTcpRequest(const struct arguments *args, struct tcp_session *tcp, co
             // append '\0' at the end
             pdata->buf = realloc(pdata->buf, pdata->buflen + 1);
             pdata->buf[pdata->buflen] = '\0';
-            log_android(ANDROID_LOG_DEBUG, "ACN: Request - Data = \n%s", pdata->buf);
+
+            // cannot output data or sometimes stack smashing is detected ...
+            // log_android(ANDROID_LOG_DEBUG, "ACN: Request - Data = \n%s", pdata->buf);
 
             // process data
             processData(args, tcp, (char *) pdata->buf);
@@ -108,7 +117,7 @@ void checkAndProcessTLSHandshake(const struct arguments *args, struct tcp_sessio
 {
     // https://en.wikipedia.org/wiki/Transport_Layer_Security#Handshake_protocol
     // https://tools.ietf.org/html/rfc5246
-    if (!(buffer && buf_len >= sizeof(tls_handshake_record))) return;
+    if (!(security_analysis_enabled && buffer && buf_len >= sizeof(tls_handshake_record))) return;
 
     struct tls_handshake_record *tls = (struct tls_handshake_record*) buffer;
     if (tls->content_type != TLS_CONTENTTYPE_HANDSHAKE) return;
@@ -140,38 +149,48 @@ void checkAndProcessTLSHandshake(const struct arguments *args, struct tcp_sessio
         return;
     }
 
-    // TODO: save in tcp session and propagate to java log
-    // TODO: in java: CipherSuite LookUp + secure or not
     uint8_t *handshake_data = buffer + sizeof(struct tls_handshake_record);
     uint8_t version_major = handshake_data[TLS_SERVERHELLO_VERSION_MAJOR];
     uint8_t version_minor = handshake_data[TLS_SERVERHELLO_VERSION_MINOR];
     uint8_t sessionid_len = handshake_data[TLS_SERVERHELLO_SESSIONID_LEN]; // after major + minor + 32byte random
     uint16_t cipher_suite = ntohs(*(uint16_t*)&handshake_data[TLS_SERVERHELLO_SESSIONID_LEN + 1 + sessionid_len]);
+    uint8_t compression = handshake_data[TLS_SERVERHELLO_SESSIONID_LEN + 1 + sessionid_len + 2];
 
-    log_android(ANDROID_LOG_DEBUG, "ACN: TLS Handshake - ServerHello - Major: %d, Minor: %d, CipherSuite: %04x", version_major, version_minor, cipher_suite);
+    log_android(ANDROID_LOG_DEBUG, "ACN: TLS Handshake - ServerHello - Major: %d, Minor: %d, CipherSuite: %04x, Compression: %d", version_major, version_minor, cipher_suite, compression);
 
     // create packet and log it
-    jobject packet = create_acnpacket(args, tcp->version, partner, ntohs(tcp->dest), tcp->uid, 0, NULL, cipher_suite, (uint16_t)version_major << 8 | (uint16_t)version_minor, 789); // TODO: compression
+    jobject packet = create_acnpacket(args, tcp->version, partner, ntohs(tcp->dest), tcp->uid, 0, NULL, cipher_suite, (uint16_t)version_major << 8 | (uint16_t)version_minor, compression);
     log_connection(args, packet);
 }
 
-char *g_phone_imei = NULL;
 void processData(const struct arguments *args, struct tcp_session *tcp, char *data)
 {
-    bool sends_imei = false;
+    char **keywords = NULL;
+    int num_predefined = 0;
+    int num_keywords = 0;
 
     // IMEI
     if (g_phone_imei != NULL)
     {
+        bool sends_imei = false;
         if (strlen(g_phone_imei) == 15)
         {
             sends_imei = checkContains(g_phone_imei, data);
-
-            log_android(ANDROID_LOG_DEBUG, "ACN: Contains IMEI (%s) = %d", g_phone_imei, sends_imei);
         }
         else // emulator or when IMEI could not be extracted
         {
             sends_imei = checkIMEIRegex(g_phone_imei, data);
+        }
+
+        log_android(ANDROID_LOG_DEBUG, "ACN: Contains IMEI (%s) = %d", g_phone_imei, sends_imei);
+
+        // if imei found in packet -> set keyword
+        if (sends_imei)
+        {
+            keywords = realloc(keywords, (num_predefined + 1) * sizeof(char*));
+            keywords[num_predefined] = KEYWORD_IMEI;
+
+            num_predefined++;
         }
     }
 
@@ -181,18 +200,18 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
               tcp->version == 4 ? (const void *) &tcp->daddr.ip4 : (const void *) &tcp->daddr.ip6,
               dest, sizeof(dest));
 
-
-    // TEST keywords TODO: delete
-    const char * keywords[] = {
-            "first",
-            "imei",
-            "potato"
-    };
-    // END
-
-
-    jobject packet = create_acnpacket(args, tcp->version, dest, ntohs(tcp->dest), tcp->uid, 3, keywords, 123, 456, 789); // TODO: keywords
+    jobject packet = create_acnpacket(args, tcp->version, dest, ntohs(tcp->dest), tcp->uid, num_predefined + num_keywords, keywords, 0, 0, 0);
     log_connection(args, packet);
+
+
+    // free everything
+    if (num_keywords > 0 && keywords != NULL)
+    {
+        for (int i = 0; i < num_keywords; ++num_keywords) {
+            free(keywords[num_predefined + i]);
+        }
+        free(keywords);
+    }
 }
 
 bool checkContains(char *search, char *data)
@@ -210,7 +229,7 @@ bool checkRegex(char *search, char *data)
     char msgbuf[100];
 
     // Compile regular expression
-    reti = regcomp(&regex, search, REG_NOSUB);
+    reti = regcomp(&regex, search, REG_EXTENDED | REG_NEWLINE | REG_NOSUB);
     if (reti) {
         log_android(ANDROID_LOG_DEBUG, "ACN: Could not compile regex \"%s\"", search);
         return false;
@@ -238,45 +257,56 @@ bool checkRegex(char *search, char *data)
 
 bool checkIMEIRegex(char *search, char *data)
 {
+    bool ret_val = false;
+
     regex_t regex;
     int reti;
     char msgbuf[100];
-    int max_matches = 100;
-    regmatch_t pmatch[100];
+    regmatch_t pmatch[1];
 
     // Compile regular expression
     log_android(ANDROID_LOG_DEBUG, "ACN: IMEI Regex = %s", search);
-    reti = regcomp(&regex, search, 0);
+    reti = regcomp(&regex, search, REG_EXTENDED | REG_NEWLINE);
     if (reti) {
         log_android(ANDROID_LOG_DEBUG, "ACN: Could not compile regex \"%s\"", search);
         return false;
     }
 
-    // Execute regular expression
-    reti = regexec(&regex, data, max_matches, pmatch, 0);
-    if (!reti) {
-        log_android(ANDROID_LOG_DEBUG, "ACN: Match");
-
-        for (int i = 0; i < max_matches; ++i)
+    // check every possible 15 digit number if it is a valid IMEI
+    int offset = 0;
+    while (!ret_val)
+    {
+        // get next regex match
+        reti = regexec(&regex, data + offset, 1, pmatch, 0);
+        if (!reti) // Match found
         {
-            if (pmatch[i].rm_so == -1) break;
+            //log_android(ANDROID_LOG_DEBUG, "ACN: checkIMEIRegex: Match from %d to %d", offset + pmatch[0].rm_so, offset + pmatch[0].rm_eo);
 
-            log_android(ANDROID_LOG_DEBUG, "ACN: checkIMEIRegex: %d - %d", pmatch[i].rm_so, pmatch[i].rm_eo);
+            // check if found numbers are a valid IMEI
+            offset = offset + pmatch[0].rm_so;
+            ret_val = validateIMEI(data + offset);
+            offset++; // start searching again 1 digit afterwards
+
+            //log_android(ANDROID_LOG_DEBUG, "ACN: checkIMEIRegex: validIMEI = %d", ret_val);
+        }
+        else if (reti == REG_NOMATCH)
+        {
+            // log_android(ANDROID_LOG_DEBUG, "ACN: No match");
+
+            break;
+        }
+        else // error
+        {
+            regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+            log_android(ANDROID_LOG_DEBUG, "ACN: IMEIRegex match failed: %s", msgbuf);
+            break;
         }
     }
-    else if (reti == REG_NOMATCH) {
-        log_android(ANDROID_LOG_DEBUG, "ACN: No match");
-    }
-    else {
-        regerror(reti, &regex, msgbuf, sizeof(msgbuf));
-        log_android(ANDROID_LOG_DEBUG, "ACN: Regex match failed: %s", msgbuf);
-        return false;
-    }
 
-    // Free memory allocated to the pattern buffer by regcomp()
+    // free memory allocated regcomp
     regfree(&regex);
 
-    return false;
+    return ret_val;
 }
 
 
@@ -284,6 +314,8 @@ bool validateIMEI(char* imei)
 {
     // https://en.wikipedia.org/wiki/International_Mobile_Equipment_Identity#Check_digit_computation
     int validation_digit = imei[14] - '0';
+
+    //log_android(ANDROID_LOG_DEBUG, "ACN: validateIMEI - Validation digit = %d", validation_digit);
 
     int sum = 0;
     for (int i = 0; i < 14; ++i)
@@ -297,6 +329,8 @@ bool validateIMEI(char* imei)
         {
             sum += (imei[i] - '0');
         }
+
+        //log_android(ANDROID_LOG_DEBUG, "ACN: validateIMEI - Sum = %d", sum);
     }
 
     if ((sum + validation_digit) % 10 == 0) return true;
@@ -306,6 +340,8 @@ bool validateIMEI(char* imei)
 void JNI_enableSecurityAnalysis(JNIEnv *env, jobject instance, jboolean val)
 {
     log_android(ANDROID_LOG_DEBUG, "ACN: JNI_enableSecurityAnalysis: %d", val);
+
+    security_analysis_enabled = val;
 }
 
 void JNI_setIMEI(JNIEnv *env, jobject instance, jstring imei)

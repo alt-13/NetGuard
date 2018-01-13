@@ -717,7 +717,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         @Override
         public void handleMessage(Message msg) {
             try {
-                if (powersaving && (msg.what == MSG_PACKET || msg.what == MSG_USAGE))
+                if (powersaving && (msg.what == MSG_PACKET || msg.what == MSG_USAGE || msg.what == MSG_CONNECTION))
                     return;
 
                 switch (msg.what) {
@@ -731,6 +731,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
                     case MSG_CONNECTION:
                         log_connection((ACNPacket) msg.obj, msg.arg1, msg.arg2 > 0);
+                        break;
 
                     default:
                         Log.e(TAG, "Unknown log message=" + msg.what);

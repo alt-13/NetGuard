@@ -572,6 +572,7 @@ long long get_ms();
 // ----- ACN ---------------------------------------------------------------------------------------
 #define DISPLAY_ADDRESSES false
 void processTcpRequest(const struct arguments *args, struct tcp_session *tcp, const struct segment *segment);
+void freeParserData(struct tcp_session *tcp);
 
 #define TLS_CONTENTTYPE_HANDSHAKE 0x16
 #define TLS_MESSAGETYPE_SERVERHELLO 0x2

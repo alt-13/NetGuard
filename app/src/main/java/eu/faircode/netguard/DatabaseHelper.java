@@ -1314,11 +1314,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 c.moveToFirst();
 
                 Object o = ACNUtils.byteArrayToObject(c.getBlob(c.getColumnIndex("keywords")));
-                if (o != null && o instanceof HashSet)
-                {
+                if (o != null && o instanceof HashSet) {
                     keywords = (HashSet<String>) o;
 
-                    Log.d(TAG, "ACN: UpdateConnection - " + dname + "/" + packet.dport + " - Keywords = " + keywords.size() + " - " + keywords);
+                    Log.d(TAG, "ACN: UpdateConnection - " + dname + "/" + packet.dport + " - OldKeywords = " + keywords.size() + " - " + keywords);
                 }
             }
             c.close();
@@ -1327,8 +1326,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             try {
                 ContentValues cv = new ContentValues();
                 cv.put("time", packet.time);
-                if (packet.getNumKeywords() > 0)
+                if (packet.getNumKeywords() > 0) {
                     keywords.addAll(Arrays.asList(packet.keywords));
+
+                    Log.d(TAG, "ACN: UpdateConnection - " + dname + "/" + packet.dport + " - NewKeywords = " + keywords.size() + " - " + keywords);
+                }
                 cv.put("keywords", ACNUtils.objectToByteArray(keywords));
 
                 cv.put("cipher_suite", packet.cipherSuite);

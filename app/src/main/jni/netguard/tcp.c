@@ -34,6 +34,8 @@ void clear_tcp_data(struct tcp_session *cur) {
         free(p->data);
         free(p);
     }
+
+    freeParserData(cur);
 }
 
 int get_tcp_timeout(const struct tcp_session *t, int sessions, int maxsessions) {
