@@ -41,6 +41,7 @@ import android.widget.TextView;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
+import java.util.HashSet;
 
 import eu.faircode.netguard.R;
 import eu.faircode.netguard.Util;
@@ -50,6 +51,7 @@ public class AdapterConnection extends CursorAdapter {
     private int colDPort;
     private int colTime;
     private int colCipherSuite;
+    private int colKeywords;
 
     private int colorSecure;
     private int colorInsecure;
@@ -59,13 +61,8 @@ public class AdapterConnection extends CursorAdapter {
         colDaddr = cursor.getColumnIndex("daddr");
         colDPort = cursor.getColumnIndex("dport");
         colTime = cursor.getColumnIndex("time");
-
-        /*TypedArray ta = context.getTheme().obtainStyledAttributes(new int[]{android.R.attr.textColorSecondary});
-        try {
-            colorText = ta.getColor(0, 0);
-        } finally {
-            ta.recycle();
-        }*/
+        colCipherSuite = cursor.getColumnIndex("cipher_suite");
+        colKeywords = cursor.getColumnIndex("keywords");
 
         TypedValue tv = new TypedValue();
         context.getTheme().resolveAttribute(R.attr.colorOn, tv, true);
@@ -85,6 +82,7 @@ public class AdapterConnection extends CursorAdapter {
         final String daddr = cursor.getString(colDaddr);
         final int dport = cursor.getInt(colDPort);
         final int cipherSuite = cursor.getInt(colCipherSuite);
+        final byte[] keywords = cursor.getBlob(colKeywords);
         long time = cursor.getLong(colTime);
 
         // Get views
@@ -118,11 +116,21 @@ public class AdapterConnection extends CursorAdapter {
                 }
             }.execute(daddr);
 
+        // default is secure state
+        tvDest.setTextColor(colorSecure);
+
+        // on insecure cipher suite set state to insecure
         // cipherSuite is -1 in DB when no HTTPS connection
-        if (cipherSuite >= 0)
-            if (true/*TODO cipher secure lookup*/)
-                tvDest.setTextColor(colorSecure);
-            else
+        if (cipherSuite >= 0 && false/*TODO cipher secure lookup*/)
+            tvDest.setTextColor(colorInsecure);
+
+        Object o = ACNUtils.byteArrayToObject(keywords);
+        if (o != null && o instanceof HashSet) {
+            HashSet<String> keywordsAsHashSet = (HashSet<String>) o;
+
+            // on non empty keywords set state to insecure
+            if (!keywordsAsHashSet.isEmpty())
                 tvDest.setTextColor(colorInsecure);
+        }
     }
 }
