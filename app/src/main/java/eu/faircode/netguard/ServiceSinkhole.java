@@ -95,6 +95,7 @@ import java.net.UnknownHostException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -783,6 +784,25 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             // log the connection
             if (security && log_app && packet.uid >= 0) {
                 dh.updateConnection(packet, dname);
+
+                // update keyword table
+                Cursor cursor = dh.getKeywords(packet.uid);
+                final int colKeywords = cursor.getColumnIndex("keyword");
+                cursor.moveToFirst();
+
+                while(!cursor.isAfterLast()) {
+                    String keyword = cursor.getString(colKeywords);
+
+                    // set occurred to true if list received from native code contains keyword, otherwise to false
+                    if (Arrays.asList(packet.keywords).contains(keyword)) {
+                        dh.updateKeyword(packet.uid, keyword, true);
+                    }
+                    else {
+                        dh.updateKeyword(packet.uid, keyword, false);
+                    }
+
+                    cursor.moveToNext();
+                }
             }
         }
 

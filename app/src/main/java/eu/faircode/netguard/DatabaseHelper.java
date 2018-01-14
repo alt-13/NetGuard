@@ -1421,6 +1421,37 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    public void updateKeyword(int uid, String keyword, boolean occurred) {
+        int rows;
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("occurred", occurred);
+
+                // There is a segmented index on uid, keyword
+                rows = db.update("keywords", cv, "uid = ? AND keyword = ?",
+                        new String[]{
+                                Integer.toString(uid),
+                                keyword});
+
+                if (rows != 1)
+                    Log.e(TAG, "Update access failed rows=" + rows);
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyAccessChanged();
+    }
+
     public interface LogChangedListener {
         void onChanged();
     }
