@@ -108,9 +108,12 @@ void freeParserData(struct tcp_session *tcp)
 {
     log_android(ANDROID_LOG_DEBUG, "ACN: Request - Free Data");
 
-    if(tcp->parser_data->buf) free(tcp->parser_data->buf);
-    free(tcp->parser_data);
-    tcp->parser_data = NULL;
+    if (tcp != NULL && tcp->parser_data != NULL)
+    {
+        if (tcp->parser_data->buf) free(tcp->parser_data->buf);
+        free(tcp->parser_data);
+        tcp->parser_data = NULL;
+    }
 }
 
 void checkAndProcessTLSHandshake(const struct arguments *args, struct tcp_session *tcp, const uint8_t *buffer, const size_t buf_len)
