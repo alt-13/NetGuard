@@ -293,9 +293,10 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     popup.inflate(R.menu.connection);
 
                     popup.getMenu().findItem(R.id.menu_host).setTitle(daddr + (dport > 0 ? "/" + dport : ""));
-                    popup.getMenu().findItem(R.id.menu_protocol).setTitle("TCP v" + version + " - " + (cipherSuite >= 0 ? "HTTPS" : "HTTP"));
+                    popup.getMenu().findItem(R.id.menu_protocol).setTitle("IPv" + version + " TCP - "
+                            + (cipherSuite >= 0 ? "HTTPS (" + ACNUtils.getTLSVersion(tlsVersion) + ")" : "HTTP"));
 
-                            SubMenu sub = popup.getMenu().findItem(R.id.menu_host).getSubMenu();
+                    SubMenu sub = popup.getMenu().findItem(R.id.menu_host).getSubMenu();
                     boolean multiple = false;
                     Cursor alt = null;
                     try {
@@ -313,13 +314,9 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     // Cipher suite name
                     popup.getMenu().findItem(R.id.menu_cipher_suite_name).setTitle(cipherSuiteName);
 
-                    // Cipher suite version
-                    popup.getMenu().findItem(R.id.menu_tls_version).setTitle(ACNUtils.getTLSVersion(tlsVersion));
-
                     // Hide Cipher suite menus when HTTP
                     if (cipherSuite < 0) {
                         popup.getMenu().findItem(R.id.menu_cipher_suite_name).setVisible(false);
-                        popup.getMenu().findItem(R.id.menu_tls_version).setVisible(false);
                     }
 
                     // Whois

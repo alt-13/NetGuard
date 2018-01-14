@@ -15,10 +15,6 @@
         android:enabled="false"
         android:title=""/>
     <item
-        android:id="@+id/menu_tls_version"
-        android:enabled="false"
-        android:title=""/>
-    <item
         android:id="@+id/menu_whois"
         android:title=""/>
     <item
