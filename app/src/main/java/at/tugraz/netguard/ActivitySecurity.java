@@ -5,6 +5,7 @@ package at.tugraz.netguard;
 import android.Manifest;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -24,6 +25,7 @@ import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import eu.faircode.netguard.DatabaseHelper;
@@ -224,12 +226,33 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
 
     private DatabaseHelper.KeywordChangedListener keywordChangedListener = new DatabaseHelper.KeywordChangedListener() {
         @Override
-        public void onChanged() {
+        public void onChanged(final int uid) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    // update adapter
                     if (adapter != null && adapter.isLive())
                         adapter.notifyDataSetChanged();
+
+                    //update native code keywords array
+                    Cursor cursor = DatabaseHelper.getInstance(ActivitySecurity.this).getKeywords(uid);
+                    final int colKeywords = cursor.getColumnIndex("keyword");
+                    List<String> keywords = new ArrayList<String>();
+
+                    cursor.moveToFirst();
+                    while(!cursor.isAfterLast()) {
+                        String keyword = cursor.getString(colKeywords);
+
+                        if (!keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_imei)) &&
+                            !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_phone_number))) {
+
+                            keywords.add(keyword);
+                        }
+                        cursor.moveToNext();
+                    }
+
+                    ACNUtils.updateKeywords(uid, keywords.toArray(new String[0]));
+
                 }
             });
         }

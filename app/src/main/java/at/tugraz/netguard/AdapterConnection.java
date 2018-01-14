@@ -49,36 +49,34 @@ public class AdapterConnection extends CursorAdapter {
     private int colDaddr;
     private int colDPort;
     private int colTime;
-    private int colCount;
+    private int colCipherSuite;
 
-    private int colorText;
-    private int colorOn;
-    private int colorOff;
+    private int colorSecure;
+    private int colorInsecure;
 
     public AdapterConnection(Context context, Cursor cursor) {
         super(context, cursor, 0);
         colDaddr = cursor.getColumnIndex("daddr");
         colDPort = cursor.getColumnIndex("dport");
         colTime = cursor.getColumnIndex("time");
-        colCount = cursor.getColumnIndex("count");
 
-        TypedArray ta = context.getTheme().obtainStyledAttributes(new int[]{android.R.attr.textColorSecondary});
+        /*TypedArray ta = context.getTheme().obtainStyledAttributes(new int[]{android.R.attr.textColorSecondary});
         try {
             colorText = ta.getColor(0, 0);
         } finally {
             ta.recycle();
-        }
+        }*/
 
         TypedValue tv = new TypedValue();
         context.getTheme().resolveAttribute(R.attr.colorOn, tv, true);
-        colorOn = tv.data;
+        colorSecure = tv.data;
         context.getTheme().resolveAttribute(R.attr.colorOff, tv, true);
-        colorOff = tv.data;
+        colorInsecure = tv.data;
     }
 
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
-        return LayoutInflater.from(context).inflate(R.layout.access, parent, false);
+        return LayoutInflater.from(context).inflate(R.layout.connection, parent, false);
     }
 
     @Override
@@ -86,19 +84,16 @@ public class AdapterConnection extends CursorAdapter {
         // Get values
         final String daddr = cursor.getString(colDaddr);
         final int dport = cursor.getInt(colDPort);
+        final int cipherSuite = cursor.getInt(colCipherSuite);
         long time = cursor.getLong(colTime);
-        int count = cursor.getInt(colCount);
 
         // Get views
         TextView tvTime = view.findViewById(R.id.tvTime);
         final TextView tvDest = view.findViewById(R.id.tvDest);
 
         // Set values
-        tvTime.setText(new SimpleDateFormat("dd HH:mm").format(time));
-        String dest = daddr + (dport > 0 ? "/" + dport : "") + (count > 1 ? " ?" + count : "");
-        SpannableString span = new SpannableString(dest);
-        span.setSpan(new UnderlineSpan(), 0, dest.length(), 0);
-        tvDest.setText(span);
+        tvTime.setText(new SimpleDateFormat("dd.MM HH:mm").format(time));
+        tvDest.setText(daddr + (dport > 0 ? "/" + dport : ""));
 
         if (Util.isNumericAddress(daddr))
             new AsyncTask<String, Object, String>() {
@@ -123,11 +118,11 @@ public class AdapterConnection extends CursorAdapter {
                 }
             }.execute(daddr);
 
-
-        tvDest.setTextColor(colorOff);
-
-        //llTraffic.setVisibility(connections > 0 || sent > 0 || received > 0 ? View.VISIBLE : View.GONE);
-        //if (connections > 0)
-        //    tvConnections.setText(context.getString(R.string.msg_count, connections));
+        // cipherSuite is -1 in DB when no HTTPS connection
+        if (cipherSuite >= 0)
+            if (true/*TODO cipher secure lookup*/)
+                tvDest.setTextColor(colorSecure);
+            else
+                tvDest.setTextColor(colorInsecure);
     }
 }

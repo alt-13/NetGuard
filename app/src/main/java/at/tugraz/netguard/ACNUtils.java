@@ -123,4 +123,19 @@ public class ACNUtils {
 
         return o;
     }
+
+    public static String getTLSVersion(int version) {
+        switch(version) {
+            case 0x0300:
+                return "SSL 3.0";
+            case 0x0301:
+                return "TLS 1.0";
+            case 0x0302:
+                return "TLS 1.1";
+            case 0x0303:
+                return "TLS 1.2";
+            default:
+                return "Unknown";
+        }
+    }
 }

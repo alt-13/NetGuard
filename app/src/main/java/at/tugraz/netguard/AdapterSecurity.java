@@ -39,9 +39,11 @@ import android.widget.PopupMenu;
 import android.widget.TableLayout;
 import android.widget.TextView;
 
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -232,6 +234,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
 
             final AdapterKeyword adapterKeyword = new AdapterKeyword(context,
                     DatabaseHelper.getInstance(context).getKeywords(rule.uid));
+
             holder.lvKeywords.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, final int bposition, long bid) {
@@ -271,6 +274,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
 
             final AdapterConnection adapterConnection = new AdapterConnection(context,
                     DatabaseHelper.getInstance(context).getConnection(rule.uid));
+
             holder.lvConnections.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, final int bposition, long bid) {
@@ -279,14 +283,19 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     final long id = cursor.getLong(cursor.getColumnIndex("ID"));
                     final String daddr = cursor.getString(cursor.getColumnIndex("daddr"));
                     final int dport = cursor.getInt(cursor.getColumnIndex("dport"));
+                    final int version = cursor.getInt(cursor.getColumnIndex("version"));
                     long time = cursor.getLong(cursor.getColumnIndex("time"));
+                    int tlsVersion = cursor.getInt(cursor.getColumnIndex("tls_version"));
+                    int cipherSuite = cursor.getInt(cursor.getColumnIndex("cipher_suite"));
+                    String cipherSuiteName = cursor.getString(cursor.getColumnIndex("cipher_suite_name"));
 
                     PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
                     popup.inflate(R.menu.connection);
 
                     popup.getMenu().findItem(R.id.menu_host).setTitle(daddr + (dport > 0 ? "/" + dport : ""));
+                    popup.getMenu().findItem(R.id.menu_protocol).setTitle("TCP v" + version + " - " + (cipherSuite >= 0 ? "HTTPS" : "HTTP"));
 
-                    SubMenu sub = popup.getMenu().findItem(R.id.menu_host).getSubMenu();
+                            SubMenu sub = popup.getMenu().findItem(R.id.menu_host).getSubMenu();
                     boolean multiple = false;
                     Cursor alt = null;
                     try {
@@ -300,6 +309,18 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                             alt.close();
                     }
                     popup.getMenu().findItem(R.id.menu_host).setEnabled(multiple);
+
+                    // Cipher suite name
+                    popup.getMenu().findItem(R.id.menu_cipher_suite_name).setTitle(cipherSuiteName);
+
+                    // Cipher suite version
+                    popup.getMenu().findItem(R.id.menu_tls_version).setTitle(ACNUtils.getTLSVersion(tlsVersion));
+
+                    // Hide Cipher suite menus when HTTP
+                    if (cipherSuite < 0) {
+                        popup.getMenu().findItem(R.id.menu_cipher_suite_name).setVisible(false);
+                        popup.getMenu().findItem(R.id.menu_tls_version).setVisible(false);
+                    }
 
                     // Whois
                     final Intent lookupIP = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.tcpiputils.com/whois-lookup/" + daddr));
@@ -316,7 +337,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                         popup.getMenu().findItem(R.id.menu_port).setTitle(context.getString(R.string.title_log_port, dport));
 
                     popup.getMenu().findItem(R.id.menu_time).setTitle(
-                            SimpleDateFormat.getDateTimeInstance().format(time));
+                            SimpleDateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, Locale.GERMAN).format(time));
 
                     popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                         @Override

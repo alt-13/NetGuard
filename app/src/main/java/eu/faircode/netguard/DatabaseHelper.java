@@ -48,12 +48,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import at.tugraz.netguard.ACNPacket;
 import at.tugraz.netguard.ACNUtils;
+import at.tugraz.netguard.CipherSuiteLookupTable;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "NetGuard.Database";
 
     private static final String DB_NAME = "Netguard";
-    private static final int DB_VERSION = 22;
+    private static final int DB_VERSION = 23;
 
     private static boolean once = true;
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
@@ -254,6 +255,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", time INTEGER NOT NULL" +
                 ", keywords TEXT NOT NULL" +
                 ", cipher_suite INTEGER NOT NULL" +
+                ", cipher_suite_name TEXT NOT NULL" +
                 ", tls_version INTEGER NOT NULL" +
                 ", tls_compression INTEGER NOT NULL" +
                 ");");
@@ -391,6 +393,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 createTableKeywords(db);
                 createTableConnection(db);
                 oldVersion = 22;
+            }
+            if (oldVersion < 23) {
+                if (!columnExists(db, "connection", "cipher_suite_name"))
+                    db.execSQL("ALTER TABLE connection ADD COLUMN cipher_suite_name TEXT NULL");
+                oldVersion = 23;
             }
 
             if (oldVersion == DB_VERSION) {
@@ -1176,9 +1183,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         handler.sendMessage(msg);
     }
 
-    private void notifyKeywordChanged() {
+    private void notifyKeywordChanged(int uid) {
         Message msg = handler.obtainMessage();
         msg.what = MSG_KEYWORD;
+        msg.arg1 = uid;
         handler.sendMessage(msg);
     }
 
@@ -1225,7 +1233,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         } else if (msg.what == MSG_KEYWORD) {
             for (KeywordChangedListener listener : keywordChangedListeners)
                 try {
-                    listener.onChanged();
+                    listener.onChanged(msg.arg1);
                 } catch (Throwable ex) {
                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                 }
@@ -1277,7 +1285,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             lock.writeLock().unlock();
         }
 
-        notifyKeywordChanged();
+        notifyKeywordChanged(uid);
     }
 
     public void deleteKeyword(int uid, String keyword) {
@@ -1297,7 +1305,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             lock.writeLock().unlock();
         }
 
-        notifyKeywordChanged();
+        notifyKeywordChanged(uid);
     }
 
     public boolean updateConnection(ACNPacket packet, String dname) {
@@ -1339,6 +1347,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("keywords", ACNUtils.objectToByteArray(keywords));
 
                 cv.put("cipher_suite", packet.cipherSuite);
+                String cipherSuiteName = new CipherSuiteLookupTable().getCipherSuiteName(packet.cipherSuite);
+                cv.put("cipher_suite_name", cipherSuiteName);
+
                 cv.put("tls_version", packet.tlsVersion);
                 cv.put("tls_compression", packet.tlsCompression);
 
@@ -1399,11 +1410,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             SQLiteDatabase db = this.getReadableDatabase();
             // There is a segmented index on uid
             // There is no index on time for write performance
-            String query = "SELECT c.ID AS _id, c.*";
-            query += ", (SELECT COUNT(DISTINCT d.qname) FROM dns d WHERE d.resource IN (SELECT d1.resource FROM dns d1 WHERE d1.qname = c.daddr)) count";
-            query += " FROM connection c";
-            query += " WHERE c.uid = ?";
-            query += " ORDER BY c.time DESC";
+            String query = "SELECT ID AS _id, *";
+            query += " FROM connection";
+            query += " WHERE uid = ?";
+            query += " ORDER BY time DESC";
             query += " LIMIT 50";
             return db.rawQuery(query, new String[]{Integer.toString(uid)});
         } finally {
@@ -1424,7 +1434,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public interface KeywordChangedListener {
-        void onChanged();
+        void onChanged(int uid);
     }
 
     public interface ConnectionChangedListener {
