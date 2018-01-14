@@ -258,6 +258,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                                 switch (menu) {
                                     case R.id.menu_delete:
                                         DatabaseHelper.getInstance(context).deleteKeyword(uid, keyword);
+                                        // TODO delete keyword from alle connections in this uid
                                         result = true;
                                         break;
                                 }
@@ -423,16 +424,6 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
             Log.i(TAG, "Closing keywords cursor");
             adapterKeywords.changeCursor(null);
             holder.lvKeywords.setAdapter(null);
-        }
-    }
-
-    private void markPro(MenuItem menu, String sku) {
-        if (sku == null || !IAB.isPurchased(sku, context)) {
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-            boolean dark = prefs.getBoolean("dark_theme", false);
-            SpannableStringBuilder ssb = new SpannableStringBuilder("  " + menu.getTitle());
-            ssb.setSpan(new ImageSpan(context, dark ? R.drawable.ic_shopping_cart_white_24dp : R.drawable.ic_shopping_cart_black_24dp), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            menu.setTitle(ssb);
         }
     }
 

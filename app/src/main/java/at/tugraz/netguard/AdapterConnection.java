@@ -121,7 +121,7 @@ public class AdapterConnection extends CursorAdapter {
 
         // on insecure cipher suite set state to insecure
         // cipherSuite is -1 in DB when no HTTPS connection
-        if (cipherSuite >= 0 && false/*TODO cipher secure lookup*/)
+        if (cipherSuite >= 0 && CipherSuiteLookupTable.getCipherSuiteInsecurity(cipherSuite) != CipherSuiteLookupTable.Insecurity.NONE)
             tvDest.setTextColor(colorInsecure);
 
         Object o = ACNUtils.byteArrayToObject(keywords);

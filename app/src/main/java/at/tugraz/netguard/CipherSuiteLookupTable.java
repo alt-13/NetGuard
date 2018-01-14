@@ -4,7 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class CipherSuiteLookupTable {
-    private enum Insecurity {
+
+    public enum Insecurity {
         NONE("none"),
         UNKNOWN("unknown"),
         FEW_BIT("uses keys smaller than 128 bits in its encryption"),
@@ -23,10 +24,9 @@ public class CipherSuiteLookupTable {
         public String getReason() {
             return this.reason;
         }
-
     }
 
-    public String getCipherSuiteName(int cipherSuiteId) {
+    public static String getCipherSuiteName(int cipherSuiteId) {
         if(cipherSuiteId <= 0x001B) {
             return CipherSuiteIdLookup[cipherSuiteId];
         } else if(0x001E <= cipherSuiteId && cipherSuiteId <= 0x0046) {
@@ -73,7 +73,7 @@ public class CipherSuiteLookupTable {
         }
     }
 
-    public Insecurity getCipherSuiteInsecurity(int cipherSuiteId) {
+    public static Insecurity getCipherSuiteInsecurity(int cipherSuiteId) {
         String name;
         if(cipherSuiteId <= 0x001B) {
             name = CipherSuiteIdLookup[cipherSuiteId];

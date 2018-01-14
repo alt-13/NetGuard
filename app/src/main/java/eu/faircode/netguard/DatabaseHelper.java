@@ -1350,7 +1350,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
                 // cipherSuite -1 is http, 0 and above can be valid cipher suites
                 if (packet.cipherSuite > 0) {
-                    String cipherSuiteName = new CipherSuiteLookupTable().getCipherSuiteName(packet.cipherSuite);
+                    String cipherSuiteName = CipherSuiteLookupTable.getCipherSuiteName(packet.cipherSuite);
                     cv.put("cipher_suite_name", cipherSuiteName);
                 }
 
