@@ -785,23 +785,25 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             if (security && log_app && packet.uid >= 0) {
                 dh.updateConnection(packet, dname);
 
-                // update keyword table
-                Cursor cursor = dh.getKeywords(packet.uid);
-                final int colKeywords = cursor.getColumnIndex("keyword");
-                cursor.moveToFirst();
+                if (packet.keywords != null) {
 
-                while(!cursor.isAfterLast()) {
-                    String keyword = cursor.getString(colKeywords);
+                    // update keyword table
+                    Cursor cursor = dh.getKeywords(packet.uid);
+                    final int colKeywords = cursor.getColumnIndex("keyword");
+                    cursor.moveToFirst();
 
-                    // set occurred to true if list received from native code contains keyword, otherwise to false
-                    if (Arrays.asList(packet.keywords).contains(keyword)) {
-                        dh.updateKeyword(packet.uid, keyword, true);
+                    while (!cursor.isAfterLast()) {
+                        String keyword = cursor.getString(colKeywords);
+
+                        // set occurred to true if list received from native code contains keyword, otherwise to false
+                        if (Arrays.asList(packet.keywords).contains(keyword)) {
+                            dh.updateKeyword(packet.uid, keyword, true);
+                        } else {
+                            dh.updateKeyword(packet.uid, keyword, false);
+                        }
+
+                        cursor.moveToNext();
                     }
-                    else {
-                        dh.updateKeyword(packet.uid, keyword, false);
-                    }
-
-                    cursor.moveToNext();
                 }
             }
         }

@@ -1347,8 +1347,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("keywords", ACNUtils.objectToByteArray(keywords));
 
                 cv.put("cipher_suite", packet.cipherSuite);
-                String cipherSuiteName = new CipherSuiteLookupTable().getCipherSuiteName(packet.cipherSuite);
-                cv.put("cipher_suite_name", cipherSuiteName);
+
+                // cipherSuite -1 is http, 0 and above can be valid cipher suites
+                if (packet.cipherSuite > 0) {
+                    String cipherSuiteName = new CipherSuiteLookupTable().getCipherSuiteName(packet.cipherSuite);
+                    cv.put("cipher_suite_name", cipherSuiteName);
+                }
 
                 cv.put("tls_version", packet.tlsVersion);
                 cv.put("tls_compression", packet.tlsCompression);
