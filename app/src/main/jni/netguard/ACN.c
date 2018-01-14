@@ -8,7 +8,7 @@
 #define REGEX_PHONE_NUMBER "((650|660|664|676|680)[0-9]{7,7})|((677|681|688|699)[0-9]{8,8})"
 
 #define KEYWORD_IMEI "IMEI"
-#define KEYWORD_PHONE_NUMBER "PHONENUMBER"
+#define KEYWORD_PHONE_NUMBER "Phone Number"
 
 void processData(const struct arguments *args, struct tcp_session *tcp, char *data);
 bool validateIMEI(char* imei);
@@ -246,12 +246,14 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
         {
             bool sends_keyword = checkContains(app->keywords[i], data);
 
+            log_android(ANDROID_LOG_DEBUG, "ACN: Contains keyword \"%s\" = %d", app->keywords[i], sends_keyword);
+
             if (sends_keyword)
             {
                 int keyword_index = num_predefined + num_keywords;
                 keywords = realloc(keywords, (keyword_index + 1) * sizeof(char *));
 
-                keywords[keyword_index] = malloc(strlen(app->keywords[i]) * sizeof(char));
+                keywords[keyword_index] = malloc((strlen(app->keywords[i]) + 1) * sizeof(char));
                 strcpy(keywords[keyword_index], app->keywords[i]);
 
                 num_keywords++;
@@ -498,9 +500,8 @@ void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray ke
     {
         jstring keyword = (jstring) ((*env)->GetObjectArrayElement(env, keywords, i));
         const char *native_keyword = (*env)->GetStringUTFChars(env, keyword, 0);
-        int keyword_len = strlen(native_keyword);
 
-        app->keywords[i] = malloc(keyword_len * sizeof(char));
+        app->keywords[i] = malloc((strlen(native_keyword) + 1) * sizeof(char));
         strcpy(app->keywords[i], native_keyword);
 
         (*env)->ReleaseStringUTFChars(env, keyword, native_keyword);
