@@ -26,7 +26,7 @@ public class CipherSuiteLookupTable {
 
     }
 
-    private String[] CipherSuiteIdLookup = {
+    private static String[] CipherSuiteIdLookup = {
             "TLS_NULL_WITH_NULL_NULL",
             "TLS_RSA_WITH_NULL_MD5",
             "TLS_RSA_WITH_NULL_SHA",
@@ -55,8 +55,6 @@ public class CipherSuiteLookupTable {
             "TLS_DH_anon_EXPORT_WITH_DES40_CBC_SHA",
             "TLS_DH_anon_WITH_DES_CBC_SHA",
             "TLS_DH_anon_WITH_3DES_EDE_CBC_SHA",
-            "Reserved to avoid conflicts with SSLv3",
-            "Reserved to avoid conflicts with SSLv3",
             "TLS_KRB5_WITH_DES_CBC_SHA",
             "TLS_KRB5_WITH_3DES_EDE_CBC_SHA",
             "TLS_KRB5_WITH_RC4_128_SHA",
@@ -98,38 +96,6 @@ public class CipherSuiteLookupTable {
             "TLS_DHE_DSS_WITH_CAMELLIA_128_CBC_SHA",
             "TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA",
             "TLS_DH_anon_WITH_CAMELLIA_128_CBC_SHA",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Reserved to avoid conflicts with deployed implementations",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Reserved to avoid conflicts with widely deployed implementations",
-            "Reserved to avoid conflicts with widely deployed implementations",
-            "Reserved to avoid conflicts with widely deployed implementations",
-            "Reserved to avoid conflicts with widely deployed implementations",
-            "Reserved to avoid conflicts with widely deployed implementations",
-            "Reserved to avoid conflicts with widely deployed implementations",
-            "Reserved to avoid conflicts with widely deployed implementations",
             "TLS_DHE_RSA_WITH_AES_128_CBC_SHA256",
             "TLS_DH_DSS_WITH_AES_256_CBC_SHA256",
             "TLS_DH_RSA_WITH_AES_256_CBC_SHA256",
@@ -137,28 +103,6 @@ public class CipherSuiteLookupTable {
             "TLS_DHE_RSA_WITH_AES_256_CBC_SHA256",
             "TLS_DH_anon_WITH_AES_128_CBC_SHA256",
             "TLS_DH_anon_WITH_AES_256_CBC_SHA256",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
             "TLS_RSA_WITH_CAMELLIA_256_CBC_SHA",
             "TLS_DH_DSS_WITH_CAMELLIA_256_CBC_SHA",
             "TLS_DH_RSA_WITH_CAMELLIA_256_CBC_SHA",
@@ -225,67 +169,8 @@ public class CipherSuiteLookupTable {
             "TLS_DHE_DSS_WITH_CAMELLIA_256_CBC_SHA256",
             "TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256",
             "TLS_DH_anon_WITH_CAMELLIA_256_CBC_SHA256",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
             "TLS_EMPTY_RENEGOTIATION_INFO_SCSV",
-            "Unassigned",
             "TLS_FALLBACK_SCSV",
-            "Unassigned",
             "TLS_ECDH_ECDSA_WITH_NULL_SHA",
             "TLS_ECDH_ECDSA_WITH_RC4_128_SHA",
             "TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA",
@@ -465,9 +350,6 @@ public class CipherSuiteLookupTable {
             "TLS_ECCPWD_WITH_AES_256_GCM_SHA384",
             "TLS_ECCPWD_WITH_AES_128_CCM_SHA256",
             "TLS_ECCPWD_WITH_AES_256_CCM_SHA384",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
             "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
             "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
             "TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
@@ -475,23 +357,57 @@ public class CipherSuiteLookupTable {
             "TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256",
             "TLS_DHE_PSK_WITH_CHACHA20_POLY1305_SHA256",
             "TLS_RSA_PSK_WITH_CHACHA20_POLY1305_SHA256",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
             "TLS_ECDHE_PSK_WITH_AES_128_GCM_SHA256",
             "TLS_ECDHE_PSK_WITH_AES_256_GCM_SHA384",
             "TLS_ECDHE_PSK_WITH_AES_128_CCM_8_SHA256",
-            "Unassigned",
             "TLS_ECDHE_PSK_WITH_AES_128_CCM_SHA256",
-            "Unassigned",
-            "Unassigned",
-            "Unassigned",
-            "Reserved to avoid conflicts with widely deployed implementations",
-            "Reserved for Private Use"
     };
 
-    public String getCipherSuiteName(int CipherSuiteId) {
-        return CipherSuiteIdLookup[CipherSuiteId];
+    public String getCipherSuiteName(int cipherSuiteId) {
+        if(cipherSuiteId <= 0x001B) {
+            return CipherSuiteIdLookup[cipherSuiteId];
+        } else if(0x001E <= cipherSuiteId && cipherSuiteId <= 0x0046) {
+            int offset = 2;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0x0067 <= cipherSuiteId && cipherSuiteId <= 0x006D) {
+            int offset = 34;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0x0084 <= cipherSuiteId && cipherSuiteId <= 0x00C5) {
+            int offset = 56;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0x00FF == cipherSuiteId) {
+            int offset = 113;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0x5600 == cipherSuiteId) {
+            int offset = 21873;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0xC001 <= cipherSuiteId && cipherSuiteId <= 0xC0B3) {
+            int offset = 49009;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0xCCA8 <= cipherSuiteId && cipherSuiteId <= 0xCCAE) {
+            int offset = 52069;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0xD001 <= cipherSuiteId && cipherSuiteId <= 0xD003) {
+            int offset = 52919;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0xD005 == cipherSuiteId) {
+            int offset = 52920;
+            return CipherSuiteIdLookup[cipherSuiteId - offset];
+        } else if(0x001C <= cipherSuiteId && cipherSuiteId <= 0x001D) {
+            return "Reserved to avoid conflicts with SSLv3";
+        } else if((0x0047 <= cipherSuiteId && cipherSuiteId <= 0x004F) ||
+                (0x0059 <= cipherSuiteId && cipherSuiteId <= 0x005C)) {
+            return "Reserved to avoid conflicts with deployed implementations";
+        } else if(0x0050 <= cipherSuiteId && cipherSuiteId <= 0x0058) {
+            return "Reserved to avoid conflicts";
+        } else if((0x0060 <= cipherSuiteId && cipherSuiteId <= 0x0066) ||
+                (0xFEFE <= cipherSuiteId && cipherSuiteId <= 0xFEFF)) {
+            return "Reserved to avoid conflicts with widely deployed implementations";
+        } else if(0xFF00 <= cipherSuiteId && cipherSuiteId <= 0xFFFF) {
+            return "Reserved for Private Use";
+        } else {
+            return "Unassigned";
+        }
     }
     //<CS, Insecurity>
 
