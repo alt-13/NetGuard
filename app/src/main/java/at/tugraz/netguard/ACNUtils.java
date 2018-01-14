@@ -3,6 +3,7 @@ package at.tugraz.netguard;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
@@ -16,6 +17,12 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import eu.faircode.netguard.DatabaseHelper;
+import eu.faircode.netguard.R;
+import eu.faircode.netguard.Rule;
 
 public class ACNUtils {
     private static final String TAG = "NetGuard.ACNUtils";
@@ -74,6 +81,34 @@ public class ACNUtils {
             number = "";
 
         return number;
+    }
+
+    public static void prepareNativeSide(Context context) {
+        // set imei and phone number
+        ACNUtils.setIMEI(ACNUtils.getIMEI());
+        ACNUtils.setPhoneNumber(ACNUtils.getPhoneNumber());
+
+        //update native code keywords array for all apps
+        List<Rule> apps =  Rule.getRules(false, context);
+        for (Rule app : apps) {
+            Cursor cursor = DatabaseHelper.getInstance(context).getKeywords(app.uid);
+            final int colKeywords = cursor.getColumnIndex("keyword");
+            List<String> keywords = new ArrayList<String>();
+
+            cursor.moveToFirst();
+            while(!cursor.isAfterLast()) {
+                String keyword = cursor.getString(colKeywords);
+
+                if (!keyword.equals(context.getResources().getString(R.string.keyword_imei)) &&
+                        !keyword.equals(context.getResources().getString(R.string.keyword_phone_number))) {
+
+                    keywords.add(keyword);
+                }
+                cursor.moveToNext();
+            }
+
+            ACNUtils.updateKeywords(app.uid, keywords.toArray(new String[0]));
+        }
     }
 
     public static byte[] objectToByteArray(Object o)

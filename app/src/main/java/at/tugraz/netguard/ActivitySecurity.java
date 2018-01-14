@@ -79,9 +79,8 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         }
         else
         {
+            ACNUtils.prepareNativeSide(this);
             ACNUtils.enableSecurityAnalysis(security);
-            ACNUtils.setIMEI(ACNUtils.getIMEI());
-            ACNUtils.setPhoneNumber(ACNUtils.getPhoneNumber());
         }
 
         // Show disabled message
@@ -132,9 +131,8 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         if (requestCode == PHONE_REQUEST_CODE) {
             Log.i(TAG, "READ_PHONE_STATE was granted: " + (grantResults[0] == PackageManager.PERMISSION_GRANTED));
 
+            ACNUtils.prepareNativeSide(this);
             ACNUtils.enableSecurityAnalysis(true);
-            ACNUtils.setIMEI(ACNUtils.getIMEI());
-            ACNUtils.setPhoneNumber(ACNUtils.getPhoneNumber());
         }
     }
 

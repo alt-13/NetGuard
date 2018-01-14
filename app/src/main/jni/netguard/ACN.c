@@ -273,7 +273,7 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
     // free everything
     if (num_keywords > 0 && keywords != NULL)
     {
-        for (int i = 0; i < num_keywords; ++num_keywords) {
+        for (int i = 0; i < num_keywords; ++i) {
             free(keywords[num_predefined + i]);
         }
         free(keywords);
