@@ -255,7 +255,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", time INTEGER NOT NULL" +
                 ", keywords TEXT NOT NULL" +
                 ", cipher_suite INTEGER NOT NULL" +
-                ", cipher_suite_name TEXT NOT NULL" +
+                ", cipher_suite_name TEXT NULL" +
                 ", tls_version INTEGER NOT NULL" +
                 ", tls_compression INTEGER NOT NULL" +
                 ");");
