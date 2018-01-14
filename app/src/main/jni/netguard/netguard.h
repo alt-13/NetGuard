@@ -592,6 +592,7 @@ struct tls_handshake_record {
 
 void JNI_enableSecurityAnalysis(JNIEnv *env, jobject instance, jboolean val);
 void JNI_setIMEI(JNIEnv *env, jobject instance, jstring imei);
+void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number);
 
 jobject create_acnpacket(const struct arguments *args,
                          jint version,

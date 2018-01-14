@@ -79,6 +79,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
         {
             ACNUtils.enableSecurityAnalysis(security);
             ACNUtils.setIMEI(ACNUtils.getIMEI());
+            ACNUtils.setPhoneNumber(ACNUtils.getPhoneNumber());
         }
 
         // Show disabled message
@@ -131,6 +132,7 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
 
             ACNUtils.enableSecurityAnalysis(true);
             ACNUtils.setIMEI(ACNUtils.getIMEI());
+            ACNUtils.setPhoneNumber(ACNUtils.getPhoneNumber());
         }
     }
 

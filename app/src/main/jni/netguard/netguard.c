@@ -48,7 +48,8 @@ jclass clsACNPacket;
 jclass clsACNUtils;
 static JNINativeMethod methods[] = {
         {"enableSecurityAnalysis", "(Z)V", (void *)&JNI_enableSecurityAnalysis},
-        {"setIMEI", "(Ljava/lang/String;)V", (void *)&JNI_setIMEI}
+        {"setIMEI", "(Ljava/lang/String;)V", (void *)&JNI_setIMEI},
+        {"setPhoneNumber", "(Ljava/lang/String;)V", (void *)&JNI_setPhoneNumber},
 };
 // ----- END ACN -----------------------------------------------------------------------------------
 

@@ -2,12 +2,13 @@
 #include "string.h"
 #include "picohttpparser.h"
 #include "regex.h"
-#include <sys/system_properties.h> // IMEI
-#include <regex.h>
 
 #define REGEX_IMEI "[0-9]{15,15}"
+// https://en.wikipedia.org/wiki/List_of_mobile_phone_number_series_by_country
+#define REGEX_PHONE_NUMBER "((650|660|664|676|680)[0-9]{7,7})|((677|681|688|699)[0-9]{8,8})"
 
 #define KEYWORD_IMEI "IMEI"
+#define KEYWORD_PHONE_NUMBER "PHONENUMBER"
 
 void processData(const struct arguments *args, struct tcp_session *tcp, char *data);
 bool validateIMEI(char* imei);
@@ -16,6 +17,7 @@ bool checkRegex(char *search, char *data);
 bool checkContains(char *search, char *data);
 
 char *g_phone_imei = NULL;
+char *g_phone_number = NULL;
 bool security_analysis_enabled = false;
 
 void processTcpRequest(const struct arguments *args, struct tcp_session *tcp, const struct segment *segment)
@@ -176,13 +178,13 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
     if (g_phone_imei != NULL)
     {
         bool sends_imei = false;
-        if (strlen(g_phone_imei) == 15)
-        {
-            sends_imei = checkContains(g_phone_imei, data);
-        }
-        else // emulator or when IMEI could not be extracted
+        if (g_phone_number == REGEX_IMEI) // emulator or when IMEI could not be extracted
         {
             sends_imei = checkIMEIRegex(g_phone_imei, data);
+        }
+        else
+        {
+            sends_imei = checkContains(g_phone_imei, data);
         }
 
         log_android(ANDROID_LOG_DEBUG, "ACN: Contains IMEI (%s) = %d", g_phone_imei, sends_imei);
@@ -197,13 +199,38 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
         }
     }
 
+    // phone number
+    if (g_phone_number != NULL)
+    {
+        bool sends_number = false;
+        if (g_phone_number == REGEX_PHONE_NUMBER) // emulator or when number could not be extracted
+        {
+            sends_number = checkRegex(g_phone_number, data);
+        }
+        else
+        {
+            sends_number = checkContains(g_phone_number, data);
+        }
+
+        log_android(ANDROID_LOG_DEBUG, "ACN: Contains Phone Number (%s) = %d", g_phone_number, sends_number);
+
+        // if number found in packet -> set keyword
+        if (sends_number)
+        {
+            keywords = realloc(keywords, (num_predefined + 1) * sizeof(char*));
+            keywords[num_predefined] = KEYWORD_PHONE_NUMBER;
+
+            num_predefined++;
+        }
+    }
+
     // create packet and log it
     char dest[INET6_ADDRSTRLEN + 1];
     inet_ntop(tcp->version == 4 ? AF_INET : AF_INET6,
               tcp->version == 4 ? (const void *) &tcp->daddr.ip4 : (const void *) &tcp->daddr.ip6,
               dest, sizeof(dest));
 
-    jobject packet = create_acnpacket(args, tcp->version, dest, ntohs(tcp->dest), tcp->uid, num_predefined + num_keywords, keywords, 0, 0, 0);
+    jobject packet = create_acnpacket(args, tcp->version, dest, ntohs(tcp->dest), tcp->uid, num_predefined + num_keywords, keywords, -1, 0, 0);
     log_connection(args, packet);
 
 
@@ -227,6 +254,8 @@ bool checkContains(char *search, char *data)
 
 bool checkRegex(char *search, char *data)
 {
+    bool ret_val = false;
+
     regex_t regex;
     int reti;
     char msgbuf[100];
@@ -241,21 +270,23 @@ bool checkRegex(char *search, char *data)
     // Execute regular expression
     reti = regexec(&regex, data, 0, NULL, 0);
     if (!reti) {
-        log_android(ANDROID_LOG_DEBUG, "ACN: Match");
+        // log_android(ANDROID_LOG_DEBUG, "ACN: Match");
+
+        ret_val = true;
     }
-    else if (reti == REG_NOMATCH) {
-        log_android(ANDROID_LOG_DEBUG, "ACN: No match");
+    else if (reti == REG_NOMATCH)
+    {
+        // log_android(ANDROID_LOG_DEBUG, "ACN: No match");
     }
     else {
         regerror(reti, &regex, msgbuf, sizeof(msgbuf));
         log_android(ANDROID_LOG_DEBUG, "ACN: Regex match failed: %s", msgbuf);
-        return false;
     }
 
     // Free memory allocated to the pattern buffer by regcomp()
     regfree(&regex);
 
-    return false;
+    return ret_val;
 }
 
 bool checkIMEIRegex(char *search, char *data)
@@ -364,4 +395,23 @@ void JNI_setIMEI(JNIEnv *env, jobject instance, jstring imei)
     log_android(ANDROID_LOG_DEBUG, "ACN: Set IMEI to %s", g_phone_imei);
 
     (*env)->ReleaseStringUTFChars(env, imei, native_imei);
+}
+
+void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number)
+{
+    const char *native_number = (*env)->GetStringUTFChars(env, phone_number, 0);
+
+    if (strlen(native_number) > 0)
+    {
+        g_phone_number = realloc(g_phone_number, strlen(native_number) + 1);
+        strcpy(g_phone_number, native_number);
+    }
+    else
+    {
+        g_phone_number = REGEX_PHONE_NUMBER;
+    }
+
+    log_android(ANDROID_LOG_DEBUG, "ACN: Set Phone Number to %s", g_phone_number);
+
+    (*env)->ReleaseStringUTFChars(env, phone_number, native_number);
 }

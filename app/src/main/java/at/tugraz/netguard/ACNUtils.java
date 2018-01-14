@@ -33,6 +33,7 @@ public class ACNUtils {
 
     public static native void enableSecurityAnalysis(boolean val);
     public static native void setIMEI(String imei);
+    public static native void setPhoneNumber(String phoneNumber);
 
     public static String getIMEI() {
         if (context == null) return "";
@@ -54,6 +55,24 @@ public class ACNUtils {
             imei = "";
 
         return imei;
+    }
+
+    public static String getPhoneNumber() {
+        if (context == null || getIMEI().isEmpty()) return ""; // no imei = use phone regex
+
+        String number = "";
+
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            TelephonyManager tm = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
+            number = tm.getLine1Number();
+        } else {
+            Log.e(TAG, "Permission READ_PHONE_STATE is missing");
+        }
+
+        if (number == null || !number.matches("^\\d+$"))
+            number = "";
+
+        return number;
     }
 
     public static byte[] objectToByteArray(Object o)
