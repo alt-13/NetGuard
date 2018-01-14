@@ -421,7 +421,6 @@ void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number)
 
 void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray keywords)
 {
-    /*
     int app_index = -1;
 
     // check if keywords for uid already exist
@@ -445,14 +444,34 @@ void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray ke
         check_keywords[app_index] = (struct app_keywords) {.uid = uid, .keywords = NULL, .num_keywords = 0};
     }
 
-    // resize keywords
-    check_keywords[app_index].keywords = realloc(check_keywords[app_index].keywords,
-                                                 (check_keywords[app_index].num_keywords + 1) * sizeof(char*));
-    char **keywords = check_keywords[app_index].keywords;
+    struct app_keywords *app = &check_keywords[app_index];
 
-    // save new keyword
-    const char *native_keyword = (*env)->GetStringUTFChars(env, keyword, 0);
-    check_keywords[app_index].keywords
-    log_android(ANDROID_LOG_DEBUG, "ACN: Added keyword \"%s\" to app uid %d", native_keyword, uid);
-    (*env)->ReleaseStringUTFChars(env, keyword, native_keyword);*/
+    // free all previous keywords
+    if (app->keywords != NULL)
+    {
+        for (int i = 0; i < app->num_keywords; ++i)
+            free(app->keywords[i]);
+
+        free(app->keywords);
+        app->keywords = NULL;
+    }
+
+    // add new keywords
+    app->num_keywords = (*env)->GetArrayLength(env, keywords);
+    log_android(ANDROID_LOG_DEBUG, "ACN: Adding %d keywords to app uid %d", app->num_keywords, uid);
+
+    app->keywords = malloc(app->num_keywords * sizeof(char*));
+    for (int i = 0; i < app->num_keywords; ++i)
+    {
+        jstring keyword = (jstring) ((*env)->GetObjectArrayElement(env, keywords, i));
+        const char *native_keyword = (*env)->GetStringUTFChars(env, keyword, 0);
+        int keyword_len = strlen(native_keyword);
+
+        app->keywords[i] = malloc(keyword_len * sizeof(char));
+        strcpy(app->keywords[i], native_keyword);
+
+        (*env)->ReleaseStringUTFChars(env, keyword, native_keyword);
+
+        log_android(ANDROID_LOG_DEBUG, "ACN: Added keyword \"%s\" to app uid %d", app->keywords[i], uid);
+    }
 }
