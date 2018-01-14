@@ -593,6 +593,7 @@ struct tls_handshake_record {
 void JNI_enableSecurityAnalysis(JNIEnv *env, jobject instance, jboolean val);
 void JNI_setIMEI(JNIEnv *env, jobject instance, jstring imei);
 void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number);
+void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray keywords);
 
 jobject create_acnpacket(const struct arguments *args,
                          jint version,
@@ -604,4 +605,10 @@ jobject create_acnpacket(const struct arguments *args,
                          jint cipher_suite,
                          jint tls_version,
                          jint tls_compression);
+
+struct app_keywords {
+    jint uid;
+    char **keywords;
+    int num_keywords;
+};
 // ----- END ACN -----------------------------------------------------------------------------------

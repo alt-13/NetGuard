@@ -34,6 +34,7 @@ public class ACNUtils {
     public static native void enableSecurityAnalysis(boolean val);
     public static native void setIMEI(String imei);
     public static native void setPhoneNumber(String phoneNumber);
+    public static native void updateKeywords(int uid, String[] keyword);
 
     public static String getIMEI() {
         if (context == null) return "";

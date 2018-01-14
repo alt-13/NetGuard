@@ -20,6 +20,9 @@ char *g_phone_imei = NULL;
 char *g_phone_number = NULL;
 bool security_analysis_enabled = false;
 
+struct app_keywords *check_keywords = NULL;
+int num_apps_keywords = 0;
+
 void processTcpRequest(const struct arguments *args, struct tcp_session *tcp, const struct segment *segment)
 {
     if (!(security_analysis_enabled && segment && segment->data && segment->len > 0)) return;
@@ -414,4 +417,42 @@ void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number)
     log_android(ANDROID_LOG_DEBUG, "ACN: Set Phone Number to %s", g_phone_number);
 
     (*env)->ReleaseStringUTFChars(env, phone_number, native_number);
+}
+
+void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray keywords)
+{
+    /*
+    int app_index = -1;
+
+    // check if keywords for uid already exist
+    if (check_keywords != NULL)
+    {
+        int i = 0;
+        for (i = 0; i < num_apps_keywords; ++i)
+        {
+            if (check_keywords[i].uid == uid) break;
+        }
+        if (i < num_apps_keywords) app_index = i;
+    }
+
+    // if not -> resize and add
+    if (app_index == -1)
+    {
+        num_apps_keywords++;
+        check_keywords = realloc(check_keywords, num_apps_keywords * sizeof(struct app_keywords));
+
+        app_index = num_apps_keywords - 1;
+        check_keywords[app_index] = (struct app_keywords) {.uid = uid, .keywords = NULL, .num_keywords = 0};
+    }
+
+    // resize keywords
+    check_keywords[app_index].keywords = realloc(check_keywords[app_index].keywords,
+                                                 (check_keywords[app_index].num_keywords + 1) * sizeof(char*));
+    char **keywords = check_keywords[app_index].keywords;
+
+    // save new keyword
+    const char *native_keyword = (*env)->GetStringUTFChars(env, keyword, 0);
+    check_keywords[app_index].keywords
+    log_android(ANDROID_LOG_DEBUG, "ACN: Added keyword \"%s\" to app uid %d", native_keyword, uid);
+    (*env)->ReleaseStringUTFChars(env, keyword, native_keyword);*/
 }
