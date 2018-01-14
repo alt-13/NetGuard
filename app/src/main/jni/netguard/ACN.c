@@ -227,6 +227,39 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
         }
     }
 
+    // keywords
+    int app_index = -1;
+    if (check_keywords != NULL)
+    {
+        int i = 0;
+        for (i = 0; i < num_apps_keywords; ++i)
+        {
+            if (check_keywords[i].uid == tcp->uid) break;
+        }
+        if (i < num_apps_keywords) app_index = i;
+    }
+
+    if (app_index != -1) {
+        struct app_keywords *app = &check_keywords[app_index];
+
+        for (int i = 0; i < app->num_keywords; ++i)
+        {
+            bool sends_keyword = checkContains(app->keywords[i], data);
+
+            if (sends_keyword)
+            {
+                int keyword_index = num_predefined + num_keywords;
+                keywords = realloc(keywords, (keyword_index + 1) * sizeof(char *));
+
+                keywords[keyword_index] = malloc(strlen(app->keywords[i]) * sizeof(char));
+                strcpy(keywords[keyword_index], app->keywords[i]);
+
+                num_keywords++;
+            }
+        }
+    }
+
+
     // create packet and log it
     char dest[INET6_ADDRSTRLEN + 1];
     inet_ntop(tcp->version == 4 ? AF_INET : AF_INET6,
