@@ -43,19 +43,60 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="@style/TextTitle"
-                android:layout_margin="4dp"/>
+                android:layout_marginBottom="4dp"/>
 
-            <TextView
-                android:id="@+id/tvCipherSuiteName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textAppearance="@style/TextMedium" />
+            <TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
 
-            <TextView
-                android:id="@+id/tvCipherSuiteSecureExplanation"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textAppearance="@style/TextMedium" />
+                <TableRow>
+                    <TextView
+                        android:layout_column="1"
+                        android:text="Short:"
+                        android:gravity="left"
+                        android:paddingRight="10dp"
+                        android:textAppearance="@style/TextMedium"/>
+                    <TextView
+                        android:id="@+id/tvCipherSuiteShortName"
+                        android:gravity="left"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextMedium"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView
+                        android:layout_column="1"
+                        android:text="Full:"
+                        android:gravity="left"
+                        android:paddingRight="10dp"
+                        android:textAppearance="@style/TextMedium"/>
+                    <TextView
+                        android:id="@+id/tvCipherSuiteFullName"
+                        android:gravity="left"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textAppearance="@style/TextMedium"/>
+                </TableRow>
+
+                <TableRow>
+                    <TextView
+                        android:layout_column="1"
+                        android:text="Insecurity:"
+                        android:gravity="left"
+                        android:paddingRight="10dp"
+                        android:textAppearance="@style/TextMedium"/>
+                    <TextView
+                        android:id="@+id/tvCipherSuiteInsecurity"
+                        android:gravity="left"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textAppearance="@style/TextMedium"/>
+                </TableRow>
+
+            </TableLayout>
 
         </LinearLayout>
     </ScrollView>

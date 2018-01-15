@@ -181,7 +181,7 @@ public class ACNUtils {
     }
 
     public interface InputListener {
-        void onOk(String input);
+        void onOk(String input, boolean isRegex);
     }
 
     public static void keywordInputDialog(Context context, int explanation, final InputListener listener) {
@@ -199,7 +199,7 @@ public class ACNUtils {
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        listener.onOk(input.getText().toString());
+                        listener.onOk(input.getText().toString(), false);
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
@@ -211,18 +211,21 @@ public class ACNUtils {
                 .create().show();
     }
 
-    public static void cipherSuiteDialog(Context context, int explanation, String cipherSuiteName, CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity) {
+    public static void cipherSuiteDialog(Context context, int explanation, int cipherSuite, String cipherSuiteName, CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity) {
         LayoutInflater inflater = LayoutInflater.from(context);
         View view = inflater.inflate(R.layout.ciphersuite, null, false);
 
         TextView tvExplanation = view.findViewById(R.id.tvExplanation);
         tvExplanation.setText(explanation);
 
-        TextView tvCipherSuiteName = view.findViewById(R.id.tvCipherSuiteName);
+        TextView tvCipherSuite = view.findViewById(R.id.tvCipherSuiteShortName);
+        tvCipherSuite.setText(String.format("0x%x", cipherSuite));
+
+        TextView tvCipherSuiteName = view.findViewById(R.id.tvCipherSuiteFullName);
         tvCipherSuiteName.setText(cipherSuiteName);
 
-        TextView tvCipherSuiteSecureExplanation = view.findViewById(R.id.tvCipherSuiteSecureExplanation);
-        tvCipherSuiteSecureExplanation.setText(cipherSuiteInsecurity.getReason());
+        TextView tvCipherSuiteInsecurity = view.findViewById(R.id.tvCipherSuiteInsecurity);
+        tvCipherSuiteInsecurity.setText(cipherSuiteInsecurity.getReason());
 
         new AlertDialog.Builder(context)
                 .setView(view)

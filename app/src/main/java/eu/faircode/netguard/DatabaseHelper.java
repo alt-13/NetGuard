@@ -54,7 +54,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "NetGuard.Database";
 
     private static final String DB_NAME = "Netguard";
-    private static final int DB_VERSION = 23;
+    private static final int DB_VERSION = 24;
 
     private static boolean once = true;
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
@@ -240,6 +240,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", uid INTEGER  NOT NULL" +
                 ", keyword TEXT NOT NULL" +
                 ", occurred INTEGER NOT NULL" +
+                ", is_regex INTEGER NOT NULL" +
                 ");");
         db.execSQL("CREATE UNIQUE INDEX idx_keywords ON keywords(uid, keyword)");
     }
@@ -398,6 +399,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 if (!columnExists(db, "connection", "cipher_suite_name"))
                     db.execSQL("ALTER TABLE connection ADD COLUMN cipher_suite_name TEXT NULL");
                 oldVersion = 23;
+            }
+            if (oldVersion < 24) {
+                if (!columnExists(db, "connection", "cipher_suite_name"))
+                    db.execSQL("ALTER TABLE keywords ADD COLUMN is_regex TEXT NOT NULL DEFAULT 0");
+                oldVersion = 24;
             }
 
             if (oldVersion == DB_VERSION) {
@@ -1262,7 +1268,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
-    public void insertKeyword(int uid, String keyword) {
+    public void insertKeyword(int uid, String keyword, boolean isRegex) {
         lock.writeLock().lock();
         try {
             SQLiteDatabase db = this.getWritableDatabase();
@@ -1272,6 +1278,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("uid", uid);
                 cv.put("keyword", keyword);
                 cv.put("occurred", false);
+                cv.put("is_regex", isRegex);
 
                 if (db.insert("keywords", null, cv) == -1)
                     Log.e(TAG, "Insert keyword failed");

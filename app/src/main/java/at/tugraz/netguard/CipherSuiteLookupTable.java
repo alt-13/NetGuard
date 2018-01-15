@@ -13,7 +13,7 @@ public class CipherSuiteLookupTable {
         NULL_AUTH("is open to man-in-the-middle attacks because it does not authenticate the server"),
         WEIRD_NSS("was meant to die with SSL 3.0 and is of unknown safety"),
         RC4("uses RC4 which has insecure biases in its output"),
-        SWEET32("uses 3DES which is vulnerable to the Sweet32 attack but was not configured as a fallback in the ciphersuite order");
+        SWEET32("uses 3DES which is vulnerable to the Sweet32 attack");
 
         private String reason;
 

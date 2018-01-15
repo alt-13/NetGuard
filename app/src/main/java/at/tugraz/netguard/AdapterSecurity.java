@@ -318,7 +318,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                         @Override
                         public boolean onMenuItemClick(MenuItem item) {
                             CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity = CipherSuiteLookupTable.getCipherSuiteInsecurity(cipherSuite);
-                            ACNUtils.cipherSuiteDialog(AdapterSecurity.this.context, R.string.title_cipher_suite_details, cipherSuiteName, cipherSuiteInsecurity);
+                            ACNUtils.cipherSuiteDialog(AdapterSecurity.this.context, R.string.title_cipher_suite_details, cipherSuite, cipherSuiteName, cipherSuiteInsecurity);
                             return true;
                         }
                     });
@@ -402,10 +402,10 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
             public void onClick(View view) {
                 ACNUtils.keywordInputDialog(view.getContext(), R.string.msg_add_keyword, new ACNUtils.InputListener() {
                     @Override
-                    public void onOk(String input) {
+                    public void onOk(String input, boolean isRegex) {
                         if (!input.isEmpty()) {
                             // add keyword to list
-                            DatabaseHelper.getInstance(context).insertKeyword(rule.uid, input);
+                            DatabaseHelper.getInstance(context).insertKeyword(rule.uid, input, isRegex);
                         }
                     }
                 });
