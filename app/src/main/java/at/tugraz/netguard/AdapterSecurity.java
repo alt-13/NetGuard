@@ -42,6 +42,7 @@ import android.widget.TextView;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
@@ -289,6 +290,14 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     int tlsVersion = cursor.getInt(cursor.getColumnIndex("tls_version"));
                     final int cipherSuite = cursor.getInt(cursor.getColumnIndex("cipher_suite"));
                     final String cipherSuiteName = cursor.getString(cursor.getColumnIndex("cipher_suite_name"));
+                    HashSet<String> tempKeywords = new HashSet<>();
+
+                    Object o = ACNUtils.byteArrayToObject(cursor.getBlob(cursor.getColumnIndex("keywords")));
+                    if (o != null && o instanceof HashSet) {
+                        tempKeywords = (HashSet<String>) o;
+                    }
+
+                    final HashSet<String> keywords = tempKeywords;
 
                     PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
                     popup.inflate(R.menu.connection);
@@ -326,6 +335,21 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     // Hide Cipher suite menu when HTTP
                     if (cipherSuite < 0) {
                         popup.getMenu().findItem(R.id.menu_cipher_suite_name).setVisible(false);
+                    }
+
+                    // Keywords
+                    popup.getMenu().findItem(R.id.menu_keywords).setTitle("Sensitive Data Details");
+                    popup.getMenu().findItem(R.id.menu_keywords).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem item) {
+                            ACNUtils.keywordsDialog(AdapterSecurity.this.context, R.string.title_cipher_suite_details, keywords);
+                            return true;
+                        }
+                    });
+
+                    // Hide keywords menu when no keywords in db
+                    if (keywords.isEmpty()) {
+                        popup.getMenu().findItem(R.id.menu_keywords).setVisible(false);
                     }
 
                     // Whois

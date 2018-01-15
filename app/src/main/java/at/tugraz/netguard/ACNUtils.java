@@ -23,6 +23,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import eu.faircode.netguard.DatabaseHelper;
@@ -226,6 +227,34 @@ public class ACNUtils {
 
         TextView tvCipherSuiteInsecurity = view.findViewById(R.id.tvCipherSuiteInsecurity);
         tvCipherSuiteInsecurity.setText(cipherSuiteInsecurity.getReason());
+
+        new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing
+                    }
+                })
+                .create().show();
+    }
+
+    public static void keywordsDialog(Context context, int explanation, HashSet<String> keywords) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.keywordsdialog, null, false);
+
+        TextView tvExplanation = view.findViewById(R.id.tvExplanation);
+        tvExplanation.setText(explanation);
+
+        TextView tvKeywords = view.findViewById(R.id.tvKeywords);
+        String keywordsBulletList = "";
+
+        for (String keyword : keywords) {
+            keywordsBulletList += "<li>" + keyword + "</li>";
+        }
+
+        tvExplanation.setText(keywordsBulletList);
 
         new AlertDialog.Builder(context)
                 .setView(view)
