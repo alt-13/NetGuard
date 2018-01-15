@@ -12,7 +12,6 @@
     </item>
     <item
         android:id="@+id/menu_cipher_suite_name"
-        android:enabled="false"
         android:title=""/>
     <item
         android:id="@+id/menu_whois"

@@ -287,8 +287,8 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     final int version = cursor.getInt(cursor.getColumnIndex("version"));
                     long time = cursor.getLong(cursor.getColumnIndex("time"));
                     int tlsVersion = cursor.getInt(cursor.getColumnIndex("tls_version"));
-                    int cipherSuite = cursor.getInt(cursor.getColumnIndex("cipher_suite"));
-                    String cipherSuiteName = cursor.getString(cursor.getColumnIndex("cipher_suite_name"));
+                    final int cipherSuite = cursor.getInt(cursor.getColumnIndex("cipher_suite"));
+                    final String cipherSuiteName = cursor.getString(cursor.getColumnIndex("cipher_suite_name"));
 
                     PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
                     popup.inflate(R.menu.connection);
@@ -313,9 +313,17 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     popup.getMenu().findItem(R.id.menu_host).setEnabled(multiple);
 
                     // Cipher suite name
-                    popup.getMenu().findItem(R.id.menu_cipher_suite_name).setTitle(cipherSuiteName);
+                    popup.getMenu().findItem(R.id.menu_cipher_suite_name).setTitle("Cipher Suite Details");
+                    popup.getMenu().findItem(R.id.menu_cipher_suite_name).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem item) {
+                            CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity = CipherSuiteLookupTable.getCipherSuiteInsecurity(cipherSuite);
+                            ACNUtils.cipherSuiteDialog(AdapterSecurity.this.context, R.string.title_cipher_suite_details, cipherSuiteName, cipherSuiteInsecurity);
+                            return true;
+                        }
+                    });
 
-                    // Hide Cipher suite menus when HTTP
+                    // Hide Cipher suite menu when HTTP
                     if (cipherSuite < 0) {
                         popup.getMenu().findItem(R.id.menu_cipher_suite_name).setVisible(false);
                     }
@@ -392,7 +400,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
         holder.btnAddKeyword.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Util.stringInputDialog(view.getContext(), R.string.msg_add_keyword, new Util.InputListener() {
+                ACNUtils.keywordInputDialog(view.getContext(), R.string.msg_add_keyword, new ACNUtils.InputListener() {
                     @Override
                     public void onOk(String input) {
                         if (!input.isEmpty()) {

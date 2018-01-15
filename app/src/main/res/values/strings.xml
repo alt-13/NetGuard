@@ -228,7 +228,6 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="msg_on">Powering down your device with NetGuard enabled, will automatically start NetGuard on powering up your device</string>
     <string name="msg_unavailable">This feature is not available on this Android version</string>
     <string name="msg_always_on">Another VPN is set as Always-on VPN</string>
-    <string name="msg_add_keyword">Add keyword you would like to monitor</string>
 
     <string name="title_lockdown_enabled">Traffic is locked down</string>
     <string name="title_unmetered_allowed">Unmetered traffic is allowed</string>
@@ -310,7 +309,8 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="keyword_not_detected">not detected</string>
     <string name="keyword_imei">IMEI</string>
     <string name="keyword_phone_number">Phone Number</string>
-
+    <string name="msg_add_keyword">Add keyword you would like to monitor</string>
+    <string name="title_cipher_suite_details">Cipher Suite Details</string>
 
     <string-array name="themeNames">
         <item>teal/orange</item>

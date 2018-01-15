@@ -2,17 +2,22 @@ package at.tugraz.netguard;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
+import android.support.v7.app.AlertDialog;
 import android.telephony.TelephonyManager;
+import android.text.InputType;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.TextView;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
@@ -23,6 +28,7 @@ import java.util.List;
 import eu.faircode.netguard.DatabaseHelper;
 import eu.faircode.netguard.R;
 import eu.faircode.netguard.Rule;
+import eu.faircode.netguard.Util;
 
 public class ACNUtils {
     private static final String TAG = "NetGuard.ACNUtils";
@@ -172,5 +178,61 @@ public class ACNUtils {
             default:
                 return "Unknown";
         }
+    }
+
+    public interface InputListener {
+        void onOk(String input);
+    }
+
+    public static void keywordInputDialog(Context context, int explanation, final InputListener listener) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.keywordinput, null, false);
+
+        final EditText input = view.findViewById(R.id.etInput);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+
+        TextView tvExplanation = view.findViewById(R.id.tvExplanation);
+        tvExplanation.setText(explanation);
+        new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        listener.onOk(input.getText().toString());
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                })
+                .create().show();
+    }
+
+    public static void cipherSuiteDialog(Context context, int explanation, String cipherSuiteName, CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.ciphersuite, null, false);
+
+        TextView tvExplanation = view.findViewById(R.id.tvExplanation);
+        tvExplanation.setText(explanation);
+
+        TextView tvCipherSuiteName = view.findViewById(R.id.tvCipherSuiteName);
+        tvCipherSuiteName.setText(cipherSuiteName);
+
+        TextView tvCipherSuiteSecureExplanation = view.findViewById(R.id.tvCipherSuiteSecureExplanation);
+        tvCipherSuiteSecureExplanation.setText(cipherSuiteInsecurity.getReason());
+
+        new AlertDialog.Builder(context)
+                .setView(view)
+                .setCancelable(true)
+                .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // do nothing
+                    }
+                })
+                .create().show();
     }
 }
