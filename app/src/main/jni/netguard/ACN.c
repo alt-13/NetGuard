@@ -273,17 +273,26 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
 
         for (int i = 0; i < app->num_keywords; ++i)
         {
-            bool sends_keyword = checkContains(app->keywords[i], data);
+            bool sends_keyword = false;
 
-            log_android(ANDROID_LOG_DEBUG, "ACN: Contains keyword \"%s\" = %d", app->keywords[i], sends_keyword);
+            if (app->keywords[i].is_regex)
+            {
+                sends_keyword = checkRegex(app->keywords[i].keyword, data);
+            }
+            else
+            {
+                sends_keyword = checkContains(app->keywords[i].keyword, data);
+            }
+
+            log_android(ANDROID_LOG_DEBUG, "ACN: Contains keyword \"%s\" = %d", app->keywords[i].keyword, sends_keyword);
 
             if (sends_keyword)
             {
                 int keyword_index = num_predefined + num_keywords;
                 keywords = realloc(keywords, (keyword_index + 1) * sizeof(char *));
 
-                keywords[keyword_index] = malloc((strlen(app->keywords[i]) + 1) * sizeof(char));
-                strcpy(keywords[keyword_index], app->keywords[i]);
+                keywords[keyword_index] = malloc((strlen(app->keywords[i].keyword) + 1) * sizeof(char));
+                strcpy(keywords[keyword_index], app->keywords[i].keyword);
 
                 num_keywords++;
             }
@@ -502,7 +511,7 @@ void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number)
     (*env)->ReleaseStringUTFChars(env, phone_number, native_number);
 }
 
-void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray keywords)
+void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray keywords, jintArray is_regex)
 {
     int app_index = -1;
 
@@ -533,7 +542,7 @@ void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray ke
     if (app->keywords != NULL)
     {
         for (int i = 0; i < app->num_keywords; ++i)
-            free(app->keywords[i]);
+            free(app->keywords[i].keyword);
 
         free(app->keywords);
         app->keywords = NULL;
@@ -543,17 +552,20 @@ void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray ke
     app->num_keywords = (*env)->GetArrayLength(env, keywords);
     log_android(ANDROID_LOG_DEBUG, "ACN: Adding %d keywords to app uid %d", app->num_keywords, uid);
 
-    app->keywords = malloc(app->num_keywords * sizeof(char*));
+    app->keywords = malloc(app->num_keywords * sizeof(struct app_keyword));
+    jint *is_regex_array = (*env)->GetIntArrayElements(env, is_regex, NULL);
     for (int i = 0; i < app->num_keywords; ++i)
     {
         jstring keyword = (jstring) ((*env)->GetObjectArrayElement(env, keywords, i));
         const char *native_keyword = (*env)->GetStringUTFChars(env, keyword, 0);
 
-        app->keywords[i] = malloc((strlen(native_keyword) + 1) * sizeof(char));
-        strcpy(app->keywords[i], native_keyword);
+        app->keywords[i].is_regex = (bool) is_regex_array[i];
+        app->keywords[i].keyword = malloc((strlen(native_keyword) + 1) * sizeof(char));
+        strcpy(app->keywords[i].keyword, native_keyword);
 
         (*env)->ReleaseStringUTFChars(env, keyword, native_keyword);
 
-        log_android(ANDROID_LOG_DEBUG, "ACN: Added keyword \"%s\" to app uid %d", app->keywords[i], uid);
+        log_android(ANDROID_LOG_DEBUG, "ACN: Added keyword \"%s\"%s to app uid %d", app->keywords[i].keyword, (app->keywords[i].is_regex ? " (REGEX)" : ""), uid);
     }
+    (*env)->ReleaseIntArrayElements(env, is_regex, is_regex_array, NULL);
 }

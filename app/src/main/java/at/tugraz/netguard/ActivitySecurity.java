@@ -235,7 +235,9 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
                     //update native code keywords array
                     Cursor cursor = DatabaseHelper.getInstance(ActivitySecurity.this).getKeywords(uid);
                     final int colKeywords = cursor.getColumnIndex("keyword");
+                    final int colRegex = cursor.getColumnIndex("is_regex");
                     List<String> keywords = new ArrayList<String>();
+                    List<Integer> isRegex = new ArrayList<Integer>();
 
                     cursor.moveToFirst();
                     while(!cursor.isAfterLast()) {
@@ -246,11 +248,17 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
                                 !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_imsi))) {
 
                             keywords.add(keyword);
+                            isRegex.add(cursor.getInt(colRegex));
                         }
                         cursor.moveToNext();
                     }
 
-                    ACNUtils.updateKeywords(uid, keywords.toArray(new String[0]));
+                    // transform to int array, because java.lang.Integer in C is more complicated...
+                    int[] isRegexArray = new int[isRegex.size()];
+                    for (int i = 0; i < isRegexArray.length; i++)
+                        isRegexArray[i] = isRegex.get(i);
+
+                    ACNUtils.updateKeywords(uid, keywords.toArray(new String[0]), isRegexArray);
 
                 }
             });

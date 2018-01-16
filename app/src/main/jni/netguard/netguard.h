@@ -594,7 +594,7 @@ void JNI_enableSecurityAnalysis(JNIEnv *env, jobject instance, jboolean val);
 void JNI_setIMEI(JNIEnv *env, jobject instance, jstring imei);
 void JNI_setIMSI(JNIEnv *env, jobject instance, jstring imsi);
 void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number);
-void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray keywords);
+void JNI_updateKeywords(JNIEnv *env, jobject instance, jint uid, jobjectArray keywords, jintArray is_regex);
 
 jobject create_acnpacket(const struct arguments *args,
                          jint version,
@@ -607,9 +607,14 @@ jobject create_acnpacket(const struct arguments *args,
                          jint tls_version,
                          jint tls_compression);
 
+struct app_keyword {
+    char *keyword;
+    bool is_regex;
+};
+
 struct app_keywords {
     jint uid;
-    char **keywords;
+    struct app_keyword *keywords;
     int num_keywords;
 };
 // ----- END ACN -----------------------------------------------------------------------------------

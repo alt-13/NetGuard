@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.nfc.Tag;
 import android.os.Build;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
@@ -14,6 +15,7 @@ import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -25,6 +27,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
@@ -51,7 +54,7 @@ public class ACNUtils {
     public static native void setIMEI(String imei);
     public static native void setIMSI(String imsi);
     public static native void setPhoneNumber(String phoneNumber);
-    public static native void updateKeywords(int uid, String[] keyword);
+    public static native void updateKeywords(int uid, String[] keyword, int[] isRegex);
 
     public static String getIMEI() {
         if (context == null) return "";
@@ -122,7 +125,9 @@ public class ACNUtils {
         for (Rule app : apps) {
             Cursor cursor = DatabaseHelper.getInstance(context).getKeywords(app.uid);
             final int colKeywords = cursor.getColumnIndex("keyword");
+            final int colRegex = cursor.getColumnIndex("is_regex");
             List<String> keywords = new ArrayList<String>();
+            List<Integer> isRegex = new ArrayList<Integer>();
 
             cursor.moveToFirst();
             while(!cursor.isAfterLast()) {
@@ -133,11 +138,17 @@ public class ACNUtils {
                         !keyword.equals(context.getResources().getString(R.string.keyword_imsi))) {
 
                     keywords.add(keyword);
+                    isRegex.add(cursor.getInt(colRegex));
                 }
                 cursor.moveToNext();
             }
 
-            ACNUtils.updateKeywords(app.uid, keywords.toArray(new String[0]));
+            // transform to int array, because java.lang.Integer in C is more complicated...
+            int[] isRegexArray = new int[isRegex.size()];
+            for (int i = 0; i < isRegexArray.length; i++)
+                isRegexArray[i] = isRegex.get(i);
+
+            ACNUtils.updateKeywords(app.uid, keywords.toArray(new String[0]), isRegexArray);
         }
     }
 
@@ -215,6 +226,8 @@ public class ACNUtils {
         final EditText input = view.findViewById(R.id.etInput);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
 
+        final CheckBox cb_regex = view.findViewById(R.id.cbIsRegex);
+
         TextView tvExplanation = view.findViewById(R.id.tvExplanation);
         tvExplanation.setText(explanation);
         new AlertDialog.Builder(context)
@@ -223,7 +236,7 @@ public class ACNUtils {
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        listener.onOk(input.getText().toString(), false);
+                        listener.onOk(input.getText().toString(), cb_regex.isChecked());
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {

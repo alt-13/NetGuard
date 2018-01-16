@@ -51,7 +51,7 @@ static JNINativeMethod methods[] = {
         {"setIMEI", "(Ljava/lang/String;)V", (void *)&JNI_setIMEI},
         {"setIMSI", "(Ljava/lang/String;)V", (void *)&JNI_setIMSI},
         {"setPhoneNumber", "(Ljava/lang/String;)V", (void *)&JNI_setPhoneNumber},
-        {"updateKeywords", "(I[Ljava/lang/String;)V", (void *)&JNI_updateKeywords}
+        {"updateKeywords", "(I[Ljava/lang/String;[I)V", (void *)&JNI_updateKeywords}
 };
 // ----- END ACN -----------------------------------------------------------------------------------
 
