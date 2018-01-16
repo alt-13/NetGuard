@@ -798,9 +798,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         // set occurred to true if list received from native code contains keyword, otherwise to false
                         if (Arrays.asList(packet.keywords).contains(keyword)) {
                             dh.updateKeyword(packet.uid, keyword, true);
-                        } else {
-                            dh.updateKeyword(packet.uid, keyword, false);
                         }
+                        /*else {
+                            dh.updateKeyword(packet.uid, keyword, false);
+                        }*/
 
                         cursor.moveToNext();
                     }
