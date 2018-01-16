@@ -260,7 +260,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                                 switch (menu) {
                                     case R.id.menu_delete:
                                         DatabaseHelper.getInstance(context).deleteKeyword(uid, keyword);
-                                        // TODO delete keyword from alle connections in this uid
+                                        DatabaseHelper.getInstance(context).deleteKeywordFromConnection(uid, keyword);
                                         result = true;
                                         break;
                                 }
@@ -412,6 +412,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     @Override
                     public void onSure() {
                         DatabaseHelper.getInstance(context).clearConnection(rule.uid);
+                        DatabaseHelper.getInstance(context).resetKeywords(rule.uid);
                         if (!live)
                             notifyDataSetChanged();
                         if (rv != null)

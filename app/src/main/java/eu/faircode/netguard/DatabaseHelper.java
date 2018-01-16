@@ -1315,6 +1315,62 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         notifyKeywordChanged(uid);
     }
 
+    public void deleteKeywordFromConnection(int uid, String keyword) {
+        lock.writeLock().lock();
+        int rows;
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                String query = "SELECT * FROM connection WHERE uid = ?";
+                Cursor cursor = db.rawQuery(query, new String[]{ Integer.toString(uid) });
+                final int col = cursor.getColumnIndex("keywords");
+                final int colVersion = cursor.getColumnIndex("version");
+                final int colDAddr = cursor.getColumnIndex("daddr");
+                final int colDPort = cursor.getColumnIndex("dport");
+                final int colKeywords = cursor.getColumnIndex("keywords");
+
+                if (cursor.getCount() > 0 && colKeywords >= 0) {
+                    cursor.moveToFirst();
+                    while(!cursor.isAfterLast()) {
+                        Object o = ACNUtils.byteArrayToObject(cursor.getBlob(colKeywords));
+                        if (o != null && o instanceof HashSet) {
+                            HashSet<String> keywords = (HashSet<String>) o;
+
+                            if (keywords.contains(keyword)) {
+                                keywords.remove(keyword);
+
+                                ContentValues cv = new ContentValues();
+                                cv.put("keywords", ACNUtils.objectToByteArray(keywords));
+
+                                rows = db.update("connection", cv, "uid = ? AND version = ? AND daddr = ? AND dport = ?",
+                                        new String[]{ Integer.toString(uid),
+                                                Integer.toString(cursor.getInt(colVersion)),
+                                                cursor.getString(colDAddr),
+                                                Integer.toString(cursor.getInt(colDPort))
+                                        });
+
+                                if (rows != 1)
+                                    Log.e(TAG, "Error updating connection after deleting keyword '" + keyword + "'");
+                            }
+                        }
+
+                        cursor.moveToNext();
+                    }
+                }
+                cursor.close();
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyConnectionChanged();
+    }
+
     public boolean updateConnection(ACNPacket packet, String dname) {
         int rows;
 
@@ -1367,11 +1423,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
                 // There is a segmented index on uid, version, protocol, daddr and dport
                 rows = db.update("connection", cv, "uid = ? AND version = ? AND daddr = ? AND dport = ?",
-                        new String[]{
-                                Integer.toString(packet.uid),
+                        new String[]{ Integer.toString(packet.uid),
                                 Integer.toString(packet.version),
                                 dname == null ? packet.daddr : dname,
-                                Integer.toString(packet.dport)});
+                                Integer.toString(packet.dport)
+                        });
 
                 if (rows == 0) {
                     cv.put("uid", packet.uid);
@@ -1432,6 +1488,36 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    public void resetKeywords(int uid) {
+        Log.i(TAG,"Resetting all keyword occurrences for uid = " + uid);
+        int rows;
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("occurred", false);
+
+                // There is a segmented index on uid, keyword
+                rows = db.update("keywords", cv, "uid = ?",
+                        new String[]{ Integer.toString(uid) });
+
+                if (rows < 0)
+                    Log.e(TAG, "Update keywords failed rows=" + rows);
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyAccessChanged();
+    }
+
     public void updateKeyword(int uid, String keyword, boolean occurred) {
         int rows;
 
@@ -1450,7 +1536,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                                 keyword});
 
                 if (rows != 1)
-                    Log.e(TAG, "Update access failed rows=" + rows);
+                    Log.e(TAG, "Update keywords failed rows=" + rows);
 
                 db.setTransactionSuccessful();
             } finally {
