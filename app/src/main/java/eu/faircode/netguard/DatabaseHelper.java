@@ -1415,6 +1415,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 if (packet.cipherSuite > 0) {
                     String cipherSuiteName = CipherSuiteLookupTable.getCipherSuiteName(packet.cipherSuite);
                     cv.put("cipher_suite_name", cipherSuiteName);
+                    if (CipherSuiteLookupTable.getCipherSuiteInsecurity(packet.cipherSuite) != CipherSuiteLookupTable.Insecurity.NONE) {
+                        // TODO Notify
+                    }
                 }
 
                 cv.put("tls_version", packet.tlsVersion);

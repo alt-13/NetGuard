@@ -61,6 +61,14 @@
                 android:text="@string/title_enable_notify"
                 android:textAppearance="@style/TextMedium" />
 
+            <CheckBox
+                android:id="@+id/cbNotifySecurityProblem"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/title_enable_notify_security_problem"
+                android:textAppearance="@style/TextMedium" />
+
             <TextView
                 android:id="@+id/tvFilter4"
                 android:layout_width="wrap_content"

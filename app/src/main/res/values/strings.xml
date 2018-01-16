@@ -181,6 +181,8 @@ however it is impossible to guarantee NetGuard will work correctly on every devi
     <string name="msg_installed_n">Has been installed</string>
     <string name="msg_access">%1$s attempted internet access</string>
     <string name="msg_access_n">Attempted internet access</string>
+    <string name="msg_security_problem">%1$s: Security problem detected</string>
+    <string name="msg_security_problem_n">Security problem detected</string>
     <string name="msg_completed">Action completed</string>
     <string name="msg_vpn">NetGuard uses a local VPN to filter internet traffic.
 For this reason, please allow a VPN connection in the next dialog.
@@ -266,6 +268,7 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="title_enable_logging">Enable logging of blocked addresses only</string>
     <string name="title_enable_filtering">Enable filtering to log allowed addresses too</string>
     <string name="title_enable_notify">Enable access notifications for newly logged addresses</string>
+    <string name="title_enable_notify_security_problem">Enable security problem notifications</string>
     <string name="title_enable_help0">These settings are global settings that apply to all apps</string>
     <string name="title_enable_help1">Filtering is also required to allow or block individual addresses</string>
     <string name="title_enable_help2">Enabling logging (less) or filtering (more) might increase battery usage and might affect network speed</string>
