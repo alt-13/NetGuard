@@ -256,7 +256,7 @@ public class ACNUtils {
         tvExplanation.setText(explanation);
 
         TextView tvCipherSuite = view.findViewById(R.id.tvCipherSuiteShortName);
-        tvCipherSuite.setText(String.format("0x%x", cipherSuite));
+        tvCipherSuite.setText(String.format("0x%04x", cipherSuite));
 
         TextView tvCipherSuiteName = view.findViewById(R.id.tvCipherSuiteFullName);
         tvCipherSuiteName.setText(cipherSuiteName);
