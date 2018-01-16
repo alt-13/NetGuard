@@ -181,7 +181,7 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
     if (g_phone_imei != NULL)
     {
         bool sends_imei = false;
-        if (g_phone_number == REGEX_IMEI) // emulator or when IMEI could not be extracted
+        if (g_phone_imei == REGEX_IMEI) // emulator or when IMEI could not be extracted
         {
             sends_imei = checkIMEIRegex(g_phone_imei, data);
         }
