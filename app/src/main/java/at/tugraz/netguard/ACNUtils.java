@@ -9,6 +9,7 @@ import android.os.Build;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
 import android.telephony.TelephonyManager;
+import android.text.Html;
 import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -251,10 +252,14 @@ public class ACNUtils {
         String keywordsBulletList = "";
 
         for (String keyword : keywords) {
-            keywordsBulletList += "<li>" + keyword + "</li>";
+            keywordsBulletList += "&#8226; " + keyword + "<br/>";
         }
 
-        tvExplanation.setText(keywordsBulletList);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            tvExplanation.setText(Html.fromHtml(keywordsBulletList, Html.FROM_HTML_MODE_LEGACY));
+        } else {
+            tvExplanation.setText(Html.fromHtml(keywordsBulletList));
+        }
 
         new AlertDialog.Builder(context)
                 .setView(view)
