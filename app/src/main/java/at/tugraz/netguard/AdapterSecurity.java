@@ -246,7 +246,8 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     final String keyword = cursor.getString(cursor.getColumnIndex("keyword"));
 
                     if (!keyword.equals(context.getResources().getString(R.string.keyword_imei)) &&
-                        !keyword.equals(context.getResources().getString(R.string.keyword_phone_number))) {
+                            !keyword.equals(context.getResources().getString(R.string.keyword_phone_number)) &&
+                            !keyword.equals(context.getResources().getString(R.string.keyword_imsi))) {
 
                         PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
                         popup.inflate(R.menu.keyword);

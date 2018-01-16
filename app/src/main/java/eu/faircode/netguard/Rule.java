@@ -183,6 +183,7 @@ public class Rule {
                     // ACN add hardcoded keywords
                     // uid/keyword is unique key in db, insert will fail for duplicates
                     dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_imei), false);
+                    dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_imsi), false);
                     dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_phone_number), false);
                 }
             } finally {

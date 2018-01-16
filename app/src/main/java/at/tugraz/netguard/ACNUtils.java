@@ -48,6 +48,7 @@ public class ACNUtils {
 
     public static native void enableSecurityAnalysis(boolean val);
     public static native void setIMEI(String imei);
+    public static native void setIMSI(String imsi);
     public static native void setPhoneNumber(String phoneNumber);
     public static native void updateKeywords(int uid, String[] keyword);
 
@@ -73,8 +74,26 @@ public class ACNUtils {
         return imei;
     }
 
+    public static String getIMSI() {
+        if (context == null || getIMEI().isEmpty()) return ""; // no imei = use imsi regex
+
+        String imsi = "";
+
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            TelephonyManager tm = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
+            imsi = tm.getSubscriberId();
+        } else {
+            Log.e(TAG, "Permission READ_PHONE_STATE is missing");
+        }
+
+        if (imsi == null || imsi.length() < 14 || imsi.length() > 15 || !imsi.matches("^\\d+$"))
+            imsi = "";
+
+        return imsi;
+    }
+
     public static String getPhoneNumber() {
-        if (context == null || getIMEI().isEmpty()) return ""; // no imei = use phone regex
+        if (context == null || getIMEI().isEmpty()) return "";
 
         String number = "";
 
@@ -92,8 +111,9 @@ public class ACNUtils {
     }
 
     public static void prepareNativeSide(Context context) {
-        // set imei and phone number
+        // set imei, imsi and phone number
         ACNUtils.setIMEI(ACNUtils.getIMEI());
+        ACNUtils.setIMSI(ACNUtils.getIMSI());
         ACNUtils.setPhoneNumber(ACNUtils.getPhoneNumber());
 
         //update native code keywords array for all apps
@@ -108,7 +128,8 @@ public class ACNUtils {
                 String keyword = cursor.getString(colKeywords);
 
                 if (!keyword.equals(context.getResources().getString(R.string.keyword_imei)) &&
-                        !keyword.equals(context.getResources().getString(R.string.keyword_phone_number))) {
+                        !keyword.equals(context.getResources().getString(R.string.keyword_phone_number)) &&
+                        !keyword.equals(context.getResources().getString(R.string.keyword_imsi))) {
 
                     keywords.add(keyword);
                 }

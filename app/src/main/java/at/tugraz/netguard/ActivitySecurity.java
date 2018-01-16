@@ -242,7 +242,8 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
                         String keyword = cursor.getString(colKeywords);
 
                         if (!keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_imei)) &&
-                            !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_phone_number))) {
+                                !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_phone_number)) &&
+                                !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_imsi))) {
 
                             keywords.add(keyword);
                         }

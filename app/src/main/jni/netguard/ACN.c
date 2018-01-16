@@ -4,10 +4,13 @@
 #include "regex.h"
 
 #define REGEX_IMEI "[0-9]{15,15}"
-// https://en.wikipedia.org/wiki/List_of_mobile_phone_number_series_by_country
+// Austria: https://de.wikipedia.org/wiki/International_Mobile_Subscriber_Identity#IMSI_in_%C3%96sterreich
+#define REGEX_IMSI "232(0([1-3]|5|[7-9])|1[0-7]|91)[0-9]{9,10}"
+// Austria: https://en.wikipedia.org/wiki/List_of_mobile_phone_number_series_by_country
 #define REGEX_PHONE_NUMBER "((650|660|664|676|680)[0-9]{7,7})|((677|681|688|699)[0-9]{8,8})"
 
 #define KEYWORD_IMEI "IMEI"
+#define KEYWORD_IMSI "IMSI"
 #define KEYWORD_PHONE_NUMBER "Phone Number"
 
 void processData(const struct arguments *args, struct tcp_session *tcp, char *data);
@@ -17,6 +20,7 @@ bool checkRegex(char *search, char *data);
 bool checkContains(char *search, char *data);
 
 char *g_phone_imei = NULL;
+char *g_phone_imsi = NULL;
 char *g_phone_number = NULL;
 bool security_analysis_enabled = false;
 
@@ -197,6 +201,31 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
         {
             keywords = realloc(keywords, (num_predefined + 1) * sizeof(char*));
             keywords[num_predefined] = KEYWORD_IMEI;
+
+            num_predefined++;
+        }
+    }
+
+    // IMSI
+    if (g_phone_imsi != NULL)
+    {
+        bool sends_imsi = false;
+        if (g_phone_imsi == REGEX_IMSI) // emulator or when IMSI could not be extracted
+        {
+            sends_imsi = checkRegex(g_phone_imsi, data);
+        }
+        else
+        {
+            sends_imsi = checkContains(g_phone_imsi, data);
+        }
+
+        log_android(ANDROID_LOG_DEBUG, "ACN: Contains IMSI (%s) = %d", g_phone_imsi, sends_imsi);
+
+        // if imei found in packet -> set keyword
+        if (sends_imsi)
+        {
+            keywords = realloc(keywords, (num_predefined + 1) * sizeof(char*));
+            keywords[num_predefined] = KEYWORD_IMSI;
 
             num_predefined++;
         }
@@ -433,6 +462,25 @@ void JNI_setIMEI(JNIEnv *env, jobject instance, jstring imei)
     log_android(ANDROID_LOG_DEBUG, "ACN: Set IMEI to %s", g_phone_imei);
 
     (*env)->ReleaseStringUTFChars(env, imei, native_imei);
+}
+
+void JNI_setIMSI(JNIEnv *env, jobject instance, jstring imsi)
+{
+    const char *native_imsi = (*env)->GetStringUTFChars(env, imsi, 0);
+
+    if (strlen(native_imsi) > 0)
+    {
+        g_phone_imsi = realloc(g_phone_imsi, strlen(native_imsi) + 1);
+        strcpy(g_phone_imsi, native_imsi);
+    }
+    else
+    {
+        g_phone_imsi = REGEX_IMSI;
+    }
+
+    log_android(ANDROID_LOG_DEBUG, "ACN: Set IMSI to %s", g_phone_imsi);
+
+    (*env)->ReleaseStringUTFChars(env, imsi, native_imsi);
 }
 
 void JNI_setPhoneNumber(JNIEnv *env, jobject instance, jstring phone_number)
