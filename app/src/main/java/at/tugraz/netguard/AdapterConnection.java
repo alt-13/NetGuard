@@ -52,6 +52,7 @@ public class AdapterConnection extends CursorAdapter {
     private int colTime;
     private int colCipherSuite;
     private int colKeywords;
+    private int colCompression;
 
     private int colorSecure;
     private int colorInsecure;
@@ -63,6 +64,7 @@ public class AdapterConnection extends CursorAdapter {
         colTime = cursor.getColumnIndex("time");
         colCipherSuite = cursor.getColumnIndex("cipher_suite");
         colKeywords = cursor.getColumnIndex("keywords");
+        colCompression = cursor.getColumnIndex("tls_compression");
 
         TypedValue tv = new TypedValue();
         context.getTheme().resolveAttribute(R.attr.colorOn, tv, true);
@@ -82,6 +84,7 @@ public class AdapterConnection extends CursorAdapter {
         final String daddr = cursor.getString(colDaddr);
         final int dport = cursor.getInt(colDPort);
         final int cipherSuite = cursor.getInt(colCipherSuite);
+        final int compression = cursor.getInt(colCompression);
         final byte[] keywords = cursor.getBlob(colKeywords);
         long time = cursor.getLong(colTime);
 
@@ -131,6 +134,11 @@ public class AdapterConnection extends CursorAdapter {
             // on non empty keywords set state to insecure
             if (!keywordsAsHashSet.isEmpty())
                 tvDest.setTextColor(colorInsecure);
+        }
+
+        // if tls compression is used set to insecure
+        if (compression > 0) {
+            tvDest.setTextColor(colorInsecure);
         }
     }
 }

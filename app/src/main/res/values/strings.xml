@@ -312,6 +312,8 @@ Your internet traffic is not being sent to a remote VPN server.</string>
     <string name="keyword_phone_number">Phone Number</string>
     <string name="msg_add_keyword">Add keyword you would like to monitor</string>
     <string name="title_cipher_suite_details">Cipher Suite Details</string>
+    <string name="title_keywords_details">Sensitive Data Details</string>
+    <string name="sub_title_keywords_details">The following keywords got detected in this connection</string>
     <string name="title_regex">Regex</string>
 
     <string-array name="themeNames">

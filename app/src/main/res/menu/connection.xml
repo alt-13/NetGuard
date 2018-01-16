@@ -11,8 +11,11 @@
         <menu/>
     </item>
     <item
-        android:id="@+id/menu_cipher_suite_name"
+        android:id="@+id/menu_cipher_suite"
         android:title=""/>
+    <item
+        android:id="@+id/menu_tls_compression"
+        android:title="" />
     <item
         android:id="@+id/menu_keywords"
         android:title=""/>

@@ -23,6 +23,7 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -262,24 +263,23 @@ public class ACNUtils {
                 .create().show();
     }
 
-    public static void keywordsDialog(Context context, int explanation, HashSet<String> keywords) {
+    public static void keywordsDetailsDialog(Context context, List<String> keywords) {
         LayoutInflater inflater = LayoutInflater.from(context);
         View view = inflater.inflate(R.layout.keywordsdialog, null, false);
-
-        TextView tvExplanation = view.findViewById(R.id.tvExplanation);
-        tvExplanation.setText(explanation);
 
         TextView tvKeywords = view.findViewById(R.id.tvKeywords);
         String keywordsBulletList = "";
 
-        for (String keyword : keywords) {
-            keywordsBulletList += "&#8226; " + keyword + "<br/>";
+        for (int i = 0; i < keywords.size(); ++i) {
+            keywordsBulletList += "&#8226; " + keywords.get(i);
+            if (i != keywords.size() - 1)
+                keywordsBulletList += "<br/>";
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            tvExplanation.setText(Html.fromHtml(keywordsBulletList, Html.FROM_HTML_MODE_LEGACY));
+            tvKeywords.setText(Html.fromHtml(keywordsBulletList, Html.FROM_HTML_MODE_LEGACY));
         } else {
-            tvExplanation.setText(Html.fromHtml(keywordsBulletList));
+            tvKeywords.setText(Html.fromHtml(keywordsBulletList));
         }
 
         new AlertDialog.Builder(context)

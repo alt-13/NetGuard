@@ -11,14 +11,12 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
-import android.text.style.ImageSpan;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -36,7 +34,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupMenu;
-import android.widget.TableLayout;
 import android.widget.TextView;
 
 import java.text.DateFormat;
@@ -48,12 +45,9 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import eu.faircode.netguard.ActivityPro;
 import eu.faircode.netguard.DatabaseHelper;
-import eu.faircode.netguard.IAB;
 import eu.faircode.netguard.R;
 import eu.faircode.netguard.Rule;
-import eu.faircode.netguard.ServiceSinkhole;
 import eu.faircode.netguard.Util;
 
 public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHolder> implements Filterable {
@@ -289,6 +283,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     final int version = cursor.getInt(cursor.getColumnIndex("version"));
                     long time = cursor.getLong(cursor.getColumnIndex("time"));
                     int tlsVersion = cursor.getInt(cursor.getColumnIndex("tls_version"));
+                    int tlsCompression = cursor.getInt(cursor.getColumnIndex("tls_compression"));
                     final int cipherSuite = cursor.getInt(cursor.getColumnIndex("cipher_suite"));
                     final String cipherSuiteName = cursor.getString(cursor.getColumnIndex("cipher_suite_name"));
                     HashSet<String> tempKeywords = new HashSet<>();
@@ -322,9 +317,9 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     }
                     popup.getMenu().findItem(R.id.menu_host).setEnabled(multiple);
 
-                    // Cipher suite name
-                    popup.getMenu().findItem(R.id.menu_cipher_suite_name).setTitle("Cipher Suite Details");
-                    popup.getMenu().findItem(R.id.menu_cipher_suite_name).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                    // Cipher suite
+                    popup.getMenu().findItem(R.id.menu_cipher_suite).setTitle("Cipher Suite Details");
+                    popup.getMenu().findItem(R.id.menu_cipher_suite).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem item) {
                             CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity = CipherSuiteLookupTable.getCipherSuiteInsecurity(cipherSuite);
@@ -333,9 +328,24 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                         }
                     });
 
-                    // Hide Cipher suite menu when HTTP
+                    // TLS Compression
+                    TypedValue tv = new TypedValue();
+                    if (tlsCompression != 0) {
+                        SpannableString s = new SpannableString("Using Compression (insecure)");
+                        context.getTheme().resolveAttribute(R.attr.colorOff, tv, true);
+                        s.setSpan(new ForegroundColorSpan(tv.data), 0, s.length(), 0);
+                        popup.getMenu().findItem(R.id.menu_tls_compression).setTitle(s);
+                    } else {
+                        SpannableString s = new SpannableString("No Compression (secure)");
+                        context.getTheme().resolveAttribute(R.attr.colorOn, tv, true);
+                        s.setSpan(new ForegroundColorSpan(tv.data), 0, s.length(), 0);
+                        popup.getMenu().findItem(R.id.menu_tls_compression).setTitle(s);
+                    }
+
+                    // Hide Cipher suite menu and tls compression menu when HTTP
                     if (cipherSuite < 0) {
-                        popup.getMenu().findItem(R.id.menu_cipher_suite_name).setVisible(false);
+                        popup.getMenu().findItem(R.id.menu_cipher_suite).setVisible(false);
+                        popup.getMenu().findItem(R.id.menu_tls_compression).setVisible(false);
                     }
 
                     // Keywords
@@ -343,7 +353,7 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     popup.getMenu().findItem(R.id.menu_keywords).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem item) {
-                            ACNUtils.keywordsDialog(AdapterSecurity.this.context, R.string.title_cipher_suite_details, keywords);
+                            ACNUtils.keywordsDetailsDialog(AdapterSecurity.this.context, new ArrayList<String>(keywords));
                             return true;
                         }
                     });

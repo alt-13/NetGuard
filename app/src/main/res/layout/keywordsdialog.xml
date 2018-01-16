@@ -39,10 +39,17 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvExplanation"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="@style/TextTitle"
+                android:text="@string/title_keywords_details"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextMedium"
+                android:text="@string/sub_title_keywords_details"
                 android:layout_marginBottom="4dp"/>
 
             <TextView
@@ -51,7 +58,8 @@
                 android:layout_height="wrap_content"
                 android:gravity="left"
                 android:textAppearance="@style/TextMedium"
-                android:textColor="@color/colorOrangeOn"/>
+                android:textColor="@color/colorTealOff"
+                android:layout_marginLeft="10dp"/>
 
         </LinearLayout>
     </ScrollView>
