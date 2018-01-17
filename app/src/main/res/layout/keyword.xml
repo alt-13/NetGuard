@@ -13,8 +13,17 @@
         android:textAppearance="@style/TextMedium"
         android:gravity="left"/>
 
+    <CheckBox
+        android:id="@+id/cbIsRegex"
+        android:enabled="false"
+        android:focusable="false"
+        android:layout_marginLeft="8dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
     <TextView
         android:id="@+id/tvOccurred"
+        android:layout_marginLeft="8dp"
         android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:textAppearance="@style/TextMedium"
