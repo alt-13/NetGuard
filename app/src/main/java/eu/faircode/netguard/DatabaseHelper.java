@@ -1371,7 +1371,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         notifyConnectionChanged();
     }
 
-    public boolean updateConnection(ACNPacket packet, String dname) {
+    public boolean updateConnection(ACNPacket packet, String dname, String cipherSuiteName) {
         int rows;
 
         lock.writeLock().lock();
@@ -1410,15 +1410,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 cv.put("keywords", ACNUtils.objectToByteArray(keywords));
 
                 cv.put("cipher_suite", packet.cipherSuite);
-
-                // cipherSuite -1 is http, 0 and above can be valid cipher suites
-                if (packet.cipherSuite > 0) {
-                    String cipherSuiteName = CipherSuiteLookupTable.getCipherSuiteName(packet.cipherSuite);
-                    cv.put("cipher_suite_name", cipherSuiteName);
-                    if (CipherSuiteLookupTable.getCipherSuiteInsecurity(packet.cipherSuite) != CipherSuiteLookupTable.Insecurity.NONE) {
-                        // TODO Notify
-                    }
-                }
+                cv.put("cipher_suite_name", cipherSuiteName);
 
                 cv.put("tls_version", packet.tlsVersion);
                 cv.put("tls_compression", packet.tlsCompression);

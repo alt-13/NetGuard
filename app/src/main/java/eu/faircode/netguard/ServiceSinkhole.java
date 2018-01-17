@@ -113,6 +113,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.net.ssl.HttpsURLConnection;
 
 import at.tugraz.netguard.ACNPacket;
+import at.tugraz.netguard.CipherSuiteLookupTable;
 
 public class ServiceSinkhole extends VpnService implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "NetGuard.Service";
@@ -786,7 +787,14 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
             // log the connection
             if (security && log_app && packet.uid >= 0) {
-                dh.updateConnection(packet, dname);
+
+                // get cipher suite name only if cipher suite exists
+                String cipherSuiteName = null;
+                if (packet.cipherSuite >= 0) {
+                    cipherSuiteName = CipherSuiteLookupTable.getCipherSuiteName(packet.cipherSuite);
+                }
+
+                dh.updateConnection(packet, dname, cipherSuiteName);
 
                 if (packet.keywords != null) {
 
