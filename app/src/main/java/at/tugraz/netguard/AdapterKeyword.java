@@ -69,7 +69,8 @@ public class AdapterKeyword extends CursorAdapter {
         // Highlight hardcoded keywords
         if (keyword.equals(context.getResources().getString(R.string.keyword_imei)) ||
                 keyword.equals(context.getResources().getString(R.string.keyword_phone_number)) ||
-                keyword.equals(context.getResources().getString(R.string.keyword_imsi))) {
+                keyword.equals(context.getResources().getString(R.string.keyword_imsi)) ||
+                keyword.equals(context.getResources().getString(R.string.keyword_credit_card))) {
 
             tvKeyword.setTextColor(Color.BLACK);
         }
