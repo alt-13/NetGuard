@@ -113,6 +113,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.net.ssl.HttpsURLConnection;
 
 import at.tugraz.netguard.ACNPacket;
+import at.tugraz.netguard.ActivitySecurity;
 import at.tugraz.netguard.CipherSuiteLookupTable;
 
 public class ServiceSinkhole extends VpnService implements SharedPreferences.OnSharedPreferenceChangeListener {
@@ -3011,9 +3012,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     private void showSecurityProblemNotification(int uid) {
         String name = TextUtils.join(", ", Util.getApplicationNames(uid, ServiceSinkhole.this));
 
-        Intent main = new Intent(ServiceSinkhole.this, ActivityMain.class);
-        main.putExtra(ActivityMain.EXTRA_SEARCH, Integer.toString(uid));
-        PendingIntent pi = PendingIntent.getActivity(ServiceSinkhole.this, uid + 10000, main, PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent security = new Intent(ServiceSinkhole.this, ActivitySecurity.class);
+        security.putExtra(ActivitySecurity.EXTRA_SEARCH, Integer.toString(uid));
+        PendingIntent pi = PendingIntent.getActivity(ServiceSinkhole.this, uid + 10000, security, PendingIntent.FLAG_UPDATE_CURRENT);
 
         TypedValue tv = new TypedValue();
         getTheme().resolveAttribute(R.attr.colorOn, tv, true);

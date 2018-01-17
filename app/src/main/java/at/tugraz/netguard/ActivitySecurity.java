@@ -3,10 +3,13 @@ package at.tugraz.netguard;
 // ACN Task 2
 
 import android.Manifest;
+import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,8 +21,13 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.SwitchCompat;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ImageSpan;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.CompoundButton;
@@ -28,7 +36,9 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import eu.faircode.netguard.ActivityPro;
 import eu.faircode.netguard.DatabaseHelper;
+import eu.faircode.netguard.IAB;
 import eu.faircode.netguard.R;
 import eu.faircode.netguard.Rule;
 import eu.faircode.netguard.ServiceSinkhole;
@@ -39,6 +49,9 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
     private static final int PHONE_REQUEST_CODE = 123;
 
     private boolean running = false;
+    private SwitchCompat swEnabled;
+
+    private static final int MIN_SDK = Build.VERSION_CODES.LOLLIPOP_MR1;
 
     private boolean resolve;
     private boolean organization;
@@ -46,6 +59,15 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
     private SwipeRefreshLayout swipeRefresh;
     private AdapterSecurity adapter;
     private MenuItem menuSearch = null;
+
+    private static final int REQUEST_LOGCAT = 3;
+
+    public static final String EXTRA_REFRESH = "Refresh";
+    public static final String EXTRA_SEARCH = "Search";
+    public static final String EXTRA_RELATED = "Related";
+    public static final String EXTRA_APPROVE = "Approve";
+    public static final String EXTRA_LOGCAT = "Logcat";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,6 +146,59 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
 
         // Fill application list
         updateApplicationList(getIntent().getStringExtra(null));
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        Log.i(TAG, "New intent");
+        Util.logExtras(intent);
+        super.onNewIntent(intent);
+
+        if (Build.VERSION.SDK_INT < MIN_SDK || Util.hasXposed(this))
+            return;
+
+        setIntent(intent);
+
+        if (Build.VERSION.SDK_INT >= MIN_SDK) {
+            if (intent.hasExtra(EXTRA_REFRESH))
+                updateApplicationList(intent.getStringExtra(EXTRA_SEARCH));
+            else
+                updateSearch(intent.getStringExtra(EXTRA_SEARCH));
+            checkExtras(intent);
+        }
+    }
+
+    private void checkExtras(Intent intent) {
+        // Approve request
+        if (intent.hasExtra(EXTRA_APPROVE)) {
+            Log.i(TAG, "Requesting VPN approval");
+            swEnabled.toggle();
+        }
+
+        if (intent.hasExtra(EXTRA_LOGCAT)) {
+            Log.i(TAG, "Requesting logcat");
+            Intent logcat = getIntentLogcat();
+            if (logcat.resolveActivity(getPackageManager()) != null)
+                startActivityForResult(logcat, REQUEST_LOGCAT);
+        }
+    }
+
+    private Intent getIntentLogcat() {
+        Intent intent;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            if (Util.isPackageInstalled("org.openintents.filemanager", this)) {
+                intent = new Intent("org.openintents.action.PICK_DIRECTORY");
+            } else {
+                intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse("https://play.google.com/store/apps/details?id=org.openintents.filemanager"));
+            }
+        } else {
+            intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TITLE, "logcat.txt");
+        }
+        return intent;
     }
 
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults)
@@ -221,6 +296,103 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
             });
         }
     };
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        if (Build.VERSION.SDK_INT < MIN_SDK)
+            return false;
+
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.security, menu);
+
+        // Search
+        menuSearch = menu.findItem(R.id.menu_search);
+        menuSearch.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+            @Override
+            public boolean onMenuItemActionExpand(MenuItem item) {
+                return true;
+            }
+
+            @Override
+            public boolean onMenuItemActionCollapse(MenuItem item) {
+                if (getIntent().hasExtra(EXTRA_SEARCH) && !getIntent().getBooleanExtra(EXTRA_RELATED, false))
+                    finish();
+                return true;
+            }
+        });
+
+        final SearchView searchView = (SearchView) menuSearch.getActionView();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                if (adapter != null)
+                    adapter.getFilter().filter(query);
+                searchView.clearFocus();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                if (adapter != null)
+                    adapter.getFilter().filter(newText);
+                return true;
+            }
+        });
+        searchView.setOnCloseListener(new SearchView.OnCloseListener() {
+            @Override
+            public boolean onClose() {
+                Intent intent = getIntent();
+                intent.removeExtra(EXTRA_SEARCH);
+
+                if (adapter != null)
+                    adapter.getFilter().filter(null);
+                return true;
+            }
+        });
+        String search = getIntent().getStringExtra(EXTRA_SEARCH);
+        if (search != null) {
+            menuSearch.expandActionView();
+            searchView.setQuery(search, true);
+        }
+
+        markPro(menu.findItem(R.id.menu_log), ActivityPro.SKU_LOG);
+        if (!IAB.isPurchasedAny(this))
+            markPro(menu.findItem(R.id.menu_pro), null);
+
+        if (!Util.hasValidFingerprint(this) || getIntentInvite(this).resolveActivity(getPackageManager()) == null)
+            menu.removeItem(R.id.menu_invite);
+
+        if (getIntentSupport().resolveActivity(getPackageManager()) == null)
+            menu.removeItem(R.id.menu_support);
+
+        return true;
+    }
+
+    private void markPro(MenuItem menu, String sku) {
+        if (sku == null || !IAB.isPurchased(sku, this)) {
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            boolean dark = prefs.getBoolean("dark_theme", false);
+            SpannableStringBuilder ssb = new SpannableStringBuilder("  " + menu.getTitle());
+            ssb.setSpan(new ImageSpan(this, dark ? R.drawable.ic_shopping_cart_white_24dp : R.drawable.ic_shopping_cart_black_24dp), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            menu.setTitle(ssb);
+        }
+    }
+
+    private static Intent getIntentInvite(Context context) {
+        Intent intent = new Intent("com.google.android.gms.appinvite.ACTION_APP_INVITE");
+        intent.setPackage("com.google.android.gms");
+        intent.putExtra("com.google.android.gms.appinvite.TITLE", context.getString(R.string.menu_invite));
+        intent.putExtra("com.google.android.gms.appinvite.MESSAGE", context.getString(R.string.msg_try));
+        intent.putExtra("com.google.android.gms.appinvite.BUTTON_TEXT", context.getString(R.string.msg_try));
+        // com.google.android.gms.appinvite.DEEP_LINK_URL
+        return intent;
+    }
+
+    private static Intent getIntentSupport() {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("https://github.com/M66B/NetGuard/blob/master/FAQ.md"));
+        return intent;
+    }
 
     private DatabaseHelper.KeywordChangedListener keywordChangedListener = new DatabaseHelper.KeywordChangedListener() {
         @Override
