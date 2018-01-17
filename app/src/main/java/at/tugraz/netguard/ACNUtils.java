@@ -15,6 +15,9 @@ import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -30,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import eu.faircode.netguard.DatabaseHelper;
 import eu.faircode.netguard.R;
@@ -230,22 +235,40 @@ public class ACNUtils {
 
         TextView tvExplanation = view.findViewById(R.id.tvExplanation);
         tvExplanation.setText(explanation);
-        new AlertDialog.Builder(context)
+        final AlertDialog dialog = new AlertDialog.Builder(context)
                 .setView(view)
                 .setCancelable(true)
-                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        listener.onOk(input.getText().toString(), cb_regex.isChecked());
-                    }
-                })
+                .setPositiveButton(android.R.string.yes, null)
                 .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.cancel();
                     }
                 })
-                .create().show();
+                .create();
+
+        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialogInterface) {
+                Button button = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                button.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        try {
+                            // validate regex
+                            Pattern pattern = Pattern.compile(input.getText().toString());
+                            listener.onOk(input.getText().toString(), cb_regex.isChecked());
+                            dialog.dismiss();
+                        } catch (PatternSyntaxException e) {
+                            Log.e(TAG, "Could not compile regex");
+                            input.setError("Input is not a valid regex");
+                        }
+                    }
+                });
+            }
+        });
+
+        dialog.show();
     }
 
     public static void cipherSuiteDialog(Context context, int explanation, int cipherSuite, String cipherSuiteName, CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity) {
