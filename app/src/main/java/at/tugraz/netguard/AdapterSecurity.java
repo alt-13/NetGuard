@@ -295,6 +295,17 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
 
                     final HashSet<String> keywords = tempKeywords;
 
+                    // secure, insecure colors
+                    int colorSecure;
+                    int colorInsecure;
+
+                    TypedValue tv = new TypedValue();
+                    context.getTheme().resolveAttribute(R.attr.colorOn, tv, true);
+                    colorSecure = tv.data;
+                    context.getTheme().resolveAttribute(R.attr.colorOff, tv, true);
+                    colorInsecure = tv.data;
+
+                    // start building popup menu
                     PopupMenu popup = new PopupMenu(context, context.findViewById(R.id.vwPopupAnchor));
                     popup.inflate(R.menu.connection);
 
@@ -318,27 +329,35 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                     popup.getMenu().findItem(R.id.menu_host).setEnabled(multiple);
 
                     // Cipher suite
-                    popup.getMenu().findItem(R.id.menu_cipher_suite).setTitle("Cipher Suite Details");
-                    popup.getMenu().findItem(R.id.menu_cipher_suite).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                        @Override
-                        public boolean onMenuItemClick(MenuItem item) {
-                            CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity = CipherSuiteLookupTable.getCipherSuiteInsecurity(cipherSuite);
-                            ACNUtils.cipherSuiteDialog(AdapterSecurity.this.context, R.string.title_cipher_suite_details, cipherSuite, cipherSuiteName, cipherSuiteInsecurity);
-                            return true;
+                    if (cipherSuite >= 0) {
+                        SpannableString cipher_suite_menu_title = new SpannableString("Cipher Suite Details");
+                        final CipherSuiteLookupTable.Insecurity cipherSuiteInsecurity = CipherSuiteLookupTable.getCipherSuiteInsecurity(cipherSuite);
+
+                        if (cipherSuiteInsecurity == CipherSuiteLookupTable.Insecurity.NONE) {
+                            cipher_suite_menu_title.setSpan(new ForegroundColorSpan(colorSecure), 0, cipher_suite_menu_title.length(), 0);
+                        } else {
+                            cipher_suite_menu_title.setSpan(new ForegroundColorSpan(colorInsecure), 0, cipher_suite_menu_title.length(), 0);
                         }
-                    });
+
+                        popup.getMenu().findItem(R.id.menu_cipher_suite).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                            @Override
+                            public boolean onMenuItemClick(MenuItem item) {
+                                ACNUtils.cipherSuiteDialog(AdapterSecurity.this.context, R.string.title_cipher_suite_details, cipherSuite, cipherSuiteName, cipherSuiteInsecurity);
+                                return true;
+                            }
+                        });
+
+                        popup.getMenu().findItem(R.id.menu_cipher_suite).setTitle(cipher_suite_menu_title);
+                    }
 
                     // TLS Compression
-                    TypedValue tv = new TypedValue();
                     if (tlsCompression != 0) {
                         SpannableString s = new SpannableString("Using Compression (insecure)");
-                        context.getTheme().resolveAttribute(R.attr.colorOff, tv, true);
-                        s.setSpan(new ForegroundColorSpan(tv.data), 0, s.length(), 0);
+                        s.setSpan(new ForegroundColorSpan(colorInsecure), 0, s.length(), 0);
                         popup.getMenu().findItem(R.id.menu_tls_compression).setTitle(s);
                     } else {
                         SpannableString s = new SpannableString("No Compression (secure)");
-                        context.getTheme().resolveAttribute(R.attr.colorOn, tv, true);
-                        s.setSpan(new ForegroundColorSpan(tv.data), 0, s.length(), 0);
+                        s.setSpan(new ForegroundColorSpan(colorSecure), 0, s.length(), 0);
                         popup.getMenu().findItem(R.id.menu_tls_compression).setTitle(s);
                     }
 
@@ -348,8 +367,10 @@ public class AdapterSecurity extends RecyclerView.Adapter<AdapterSecurity.ViewHo
                         popup.getMenu().findItem(R.id.menu_tls_compression).setVisible(false);
                     }
 
-                    // Keywords
-                    popup.getMenu().findItem(R.id.menu_keywords).setTitle("Sensitive Data Details");
+                    // Keywords, colored as insecure because the menu is only shown when any keywords exist in this connection
+                    SpannableString keywords_menu_title = new SpannableString("Sensitive Data Details");
+                    keywords_menu_title.setSpan(new ForegroundColorSpan(colorInsecure), 0, keywords_menu_title.length(), 0);
+                    popup.getMenu().findItem(R.id.menu_keywords).setTitle(keywords_menu_title);
                     popup.getMenu().findItem(R.id.menu_keywords).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem item) {
