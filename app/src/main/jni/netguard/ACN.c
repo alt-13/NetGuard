@@ -1,3 +1,4 @@
+#include <regex.h>
 #include "netguard.h"
 #include "string.h"
 #include "picohttpparser.h"
@@ -8,14 +9,19 @@
 #define REGEX_IMSI "232(0([1-3]|5|[7-9])|1[0-7]|91)[0-9]{9,10}"
 // Austria: https://en.wikipedia.org/wiki/List_of_mobile_phone_number_series_by_country
 #define REGEX_PHONE_NUMBER "((650|660|664|676|680)[0-9]{7,7})|((677|681|688|699)[0-9]{8,8})"
+// https://www.regular-expressions.info/creditcard.html
+#define REGEX_CREDIT_CARD "(4[0-9]{12}([0-9]{3})?|(5[1-5][0-9]{2}|222[1-9]|22[3-9][0-9]|2[3-6][0-9]{2}|27[01][0-9]|2720)[0-9]{12}|3[47][0-9]{13}|3(0[0-5]|[68][0-9])[0-9]{11}|6(011|5[0-9]{2})[0-9]{12}|(2131|1800|35\\d{3})\\d{11})"
 
 #define KEYWORD_IMEI "IMEI"
 #define KEYWORD_IMSI "IMSI"
 #define KEYWORD_PHONE_NUMBER "Phone Number"
+#define KEYWORD_CREDIT_CARD "Credit Card"
 
 void processData(const struct arguments *args, struct tcp_session *tcp, char *data);
 bool validateIMEI(char* imei);
+bool doLuhnAlgorithm(char* data, int len);
 bool checkIMEIRegex(char *search, char *data);
+bool checkCreditCardRegex(char *search, char *data);
 bool checkRegex(char *search, char *data);
 bool checkContains(char *search, char *data);
 
@@ -256,6 +262,20 @@ void processData(const struct arguments *args, struct tcp_session *tcp, char *da
         }
     }
 
+    // credit card
+    bool sends_credit_card = checkCreditCardRegex(REGEX_CREDIT_CARD, data);
+
+    log_android(ANDROID_LOG_DEBUG, "ACN: Contains Credit Card number = %d", sends_credit_card);
+
+    // if number found in packet -> set keyword
+    if (sends_credit_card)
+    {
+        keywords = realloc(keywords, (num_predefined + 1) * sizeof(char*));
+        keywords[num_predefined] = KEYWORD_CREDIT_CARD;
+
+        num_predefined++;
+    }
+
     // keywords
     int app_index = -1;
     if (check_keywords != NULL)
@@ -394,7 +414,7 @@ bool checkIMEIRegex(char *search, char *data)
 
             // check if found numbers are a valid IMEI
             offset = offset + pmatch[0].rm_so;
-            ret_val = validateIMEI(data + offset);
+            ret_val = doLuhnAlgorithm(data + offset, pmatch[0].rm_eo - pmatch[0].rm_so);
             offset++; // start searching again 1 digit afterwards
 
             //log_android(ANDROID_LOG_DEBUG, "ACN: checkIMEIRegex: validIMEI = %d", ret_val);
@@ -419,28 +439,79 @@ bool checkIMEIRegex(char *search, char *data)
     return ret_val;
 }
 
-
-bool validateIMEI(char* imei)
+bool checkCreditCardRegex(char *search, char *data)
 {
-    // https://en.wikipedia.org/wiki/International_Mobile_Equipment_Identity#Check_digit_computation
-    int validation_digit = imei[14] - '0';
+    bool ret_val = false;
 
-    //log_android(ANDROID_LOG_DEBUG, "ACN: validateIMEI - Validation digit = %d", validation_digit);
+    regex_t regex;
+    int reti;
+    char msgbuf[100];
+    regmatch_t pmatch[1];
+
+    // Compile regular expression
+    reti = regcomp(&regex, search, REG_EXTENDED | REG_NEWLINE);
+    if (reti) {
+        log_android(ANDROID_LOG_DEBUG, "ACN: Could not compile regex \"%s\"", search);
+        return false;
+    }
+
+    // check every possible credit card number if it is valid (Luhn algorithm)
+    int offset = 0;
+    while (!ret_val)
+    {
+        // get next regex match
+        reti = regexec(&regex, data + offset, 1, pmatch, 0);
+        if (!reti) // Match found
+        {
+            // check if found numbers are a valid
+            offset = offset + pmatch[0].rm_so;
+            ret_val = doLuhnAlgorithm(data + offset, pmatch[0].rm_eo - pmatch[0].rm_so);
+            offset++; // start searching again 1 digit afterwards
+        }
+        else if (reti == REG_NOMATCH)
+        {
+            // log_android(ANDROID_LOG_DEBUG, "ACN: No match");
+
+            break;
+        }
+        else // error
+        {
+            regerror(reti, &regex, msgbuf, sizeof(msgbuf));
+            log_android(ANDROID_LOG_DEBUG, "ACN: CreditCardRegex match failed: %s", msgbuf);
+            break;
+        }
+    }
+
+    // free memory allocated regcomp
+    regfree(&regex);
+
+    return ret_val;
+}
+
+bool doLuhnAlgorithm(char* data, int len)
+{
+    int validation_digit = data[len - 1] - '0';
+
+    // log_android(ANDROID_LOG_DEBUG, "ACN: doLuhnAlgorithm - Validation digit = %d", validation_digit);
 
     int sum = 0;
-    for (int i = 0; i < 14; ++i)
+    bool double_val = true;
+    for (int i = len - 2; i >= 0; --i)
     {
-        if (i % 2 == 1)
+        // log_android(ANDROID_LOG_DEBUG, "ACN: doLuhnAlgorithm - Digit = %d", data[i] - '0');
+        if (double_val)
         {
-            int doubled = 2 * (imei[i] - '0');
+            int doubled = 2 * (data[i] - '0');
             sum += (doubled >= 10) ? 1 + (doubled - 10) : doubled;
         }
         else
         {
-            sum += (imei[i] - '0');
+            sum += (data[i] - '0');
         }
 
-        //log_android(ANDROID_LOG_DEBUG, "ACN: validateIMEI - Sum = %d", sum);
+        double_val = !double_val;
+
+        // log_android(ANDROID_LOG_DEBUG, "ACN: doLuhnAlgorithm - Sum = %d", sum);
     }
 
     if ((sum + validation_digit) % 10 == 0) return true;
