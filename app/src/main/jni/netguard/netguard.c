@@ -43,6 +43,18 @@ jclass clsAllowed;
 jclass clsRR;
 jclass clsUsage;
 
+// ----- ACN ---------------------------------------------------------------------------------------
+jclass clsACNPacket;
+jclass clsACNUtils;
+static JNINativeMethod methods[] = {
+        {"enableSecurityAnalysis", "(Z)V", (void *)&JNI_enableSecurityAnalysis},
+        {"setIMEI", "(Ljava/lang/String;)V", (void *)&JNI_setIMEI},
+        {"setIMSI", "(Ljava/lang/String;)V", (void *)&JNI_setIMSI},
+        {"setPhoneNumber", "(Ljava/lang/String;)V", (void *)&JNI_setPhoneNumber},
+        {"updateKeywords", "(I[Ljava/lang/String;[I)V", (void *)&JNI_updateKeywords}
+};
+// ----- END ACN -----------------------------------------------------------------------------------
+
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     log_android(ANDROID_LOG_INFO, "JNI load");
 
@@ -77,6 +89,15 @@ jint JNI_OnLoad(JavaVM *vm, void *reserved) {
             log_android(ANDROID_LOG_WARN, "raised file limit from %d to %d", soft, rlim.rlim_cur);
     }
 
+    // ----- ACN -----------------------------------------------------------------------------------
+    const char *acnpacket = "at/tugraz/netguard/ACNPacket";
+    clsACNPacket = jniGlobalRef(env, jniFindClass(env, acnpacket));
+
+    const char *acnutils = "at/tugraz/netguard/ACNUtils";
+    clsACNUtils = jniGlobalRef(env, jniFindClass(env, acnutils));
+    (*env)->RegisterNatives(env, clsACNUtils, methods, sizeof(methods)/sizeof(methods[0]));
+    // ----- END ACN -------------------------------------------------------------------------------
+
     return JNI_VERSION_1_6;
 }
 
@@ -88,6 +109,7 @@ void JNI_OnUnload(JavaVM *vm, void *reserved) {
         log_android(ANDROID_LOG_INFO, "JNI load GetEnv failed");
     else {
         (*env)->DeleteGlobalRef(env, clsPacket);
+        (*env)->DeleteGlobalRef(env, clsACNPacket);
         (*env)->DeleteGlobalRef(env, clsRR);
     }
 }
@@ -524,6 +546,21 @@ void log_packet(const struct arguments *args, jobject jpacket) {
 #endif
 }
 
+static jmethodID midConnectionPacket = NULL;
+void log_connection(const struct arguments *args, jobject jpacket) {
+    jclass clsService = (*args->env)->GetObjectClass(args->env, args->instance);
+
+    const char *signature = "(Lat/tugraz/netguard/ACNPacket;)V";
+    if (midConnectionPacket == NULL)
+        midConnectionPacket = jniGetMethodID(args->env, clsService, "logConnection", signature);
+
+    (*args->env)->CallVoidMethod(args->env, args->instance, midConnectionPacket, jpacket);
+    jniCheckException(args->env);
+
+    (*args->env)->DeleteLocalRef(args->env, clsService);
+    (*args->env)->DeleteLocalRef(args->env, jpacket);
+}
+
 static jmethodID midDnsResolved = NULL;
 static jmethodID midInitRR = NULL;
 jfieldID fidQTime = NULL;
@@ -849,3 +886,84 @@ void account_usage(const struct arguments *args, jint version, jint protocol,
         log_android(ANDROID_LOG_WARN, "log_packet %f", mselapsed);
 #endif
 }
+
+// ----- ACN ---------------------------------------------------------------------------------------
+jmethodID midInitACNPacket = NULL;
+
+jfieldID fidACNTime = NULL;
+jfieldID fidACNVersion = NULL;
+jfieldID fidACNDaddr = NULL;
+jfieldID fidACNDport = NULL;
+jfieldID fidACNUid = NULL;
+jfieldID fidACNKeywords = NULL;
+jfieldID fidACNCipherSuite = NULL;
+jfieldID fidACNTlsVersion = NULL;
+jfieldID fidACNTlsCompression = NULL;
+
+jobject create_acnpacket(const struct arguments *args,
+                      jint version,
+                      const char *dest,
+                      jint dport,
+                      jint uid,
+                      int num_keywords,
+                      const char **keywords,
+                      jint cipher_suite,
+                      jint tls_version,
+                      jint tls_compression) {
+    JNIEnv *env = args->env;
+
+    const char *packet = "at/tugraz/netguard/ACNPacket";
+    if (midInitACNPacket == NULL)
+        midInitACNPacket = jniGetMethodID(env, clsACNPacket, "<init>", "()V");
+    jobject jpacket = jniNewObject(env, clsACNPacket, midInitACNPacket, packet);
+
+    if (fidACNTime == NULL) {
+        fidACNTime = jniGetFieldID(env, clsACNPacket, "time", "J");
+        fidACNVersion = jniGetFieldID(env, clsACNPacket, "version", "I");
+        fidACNDaddr = jniGetFieldID(env, clsACNPacket, "daddr", "Ljava/lang/String;");
+        fidACNDport = jniGetFieldID(env, clsACNPacket, "dport", "I");
+        fidACNUid = jniGetFieldID(env, clsACNPacket, "uid", "I");
+
+        fidACNKeywords = jniGetFieldID(env, clsACNPacket, "keywords", "[Ljava/lang/String;");
+        fidACNCipherSuite = jniGetFieldID(env, clsACNPacket, "cipherSuite", "I");
+        fidACNTlsVersion = jniGetFieldID(env, clsACNPacket, "tlsVersion", "I");
+        fidACNTlsCompression = jniGetFieldID(env, clsACNPacket, "tlsCompression", "I");
+    }
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    jlong t = tv.tv_sec * 1000LL + tv.tv_usec / 1000;
+    jstring jdest = (*env)->NewStringUTF(env, dest);
+
+    (*env)->SetLongField(env, jpacket, fidACNTime, t);
+    (*env)->SetIntField(env, jpacket, fidACNVersion, version);
+    (*env)->SetObjectField(env, jpacket, fidACNDaddr, jdest);
+    (*env)->SetIntField(env, jpacket, fidACNDport, dport);
+    (*env)->SetIntField(env, jpacket, fidACNUid, uid);
+
+    if (num_keywords > 0)
+    {
+        jobjectArray jkeywords = (*env)->NewObjectArray(env, num_keywords,
+                                                        (*env)->FindClass(env, "java/lang/String"),
+                                                        (*env)->NewStringUTF(env, ""));
+        for (int i = 0; i < num_keywords; ++i) {
+            jstring jkeyword = (*env)->NewStringUTF(env, keywords[i]);
+
+            (*env)->SetObjectArrayElement(env, jkeywords, i, jkeyword);
+
+            (*env)->DeleteLocalRef(env, jkeyword);
+        }
+        (*env)->SetObjectField(env, jpacket, fidACNKeywords, jkeywords);
+
+        (*env)->DeleteLocalRef(env, jkeywords);
+    }
+    (*env)->SetIntField(env, jpacket, fidACNCipherSuite, cipher_suite);
+    (*env)->SetIntField(env, jpacket, fidACNTlsVersion, tls_version);
+    (*env)->SetIntField(env, jpacket, fidACNTlsCompression, tls_compression);
+
+    (*env)->DeleteLocalRef(env, jdest);
+    // Caller needs to delete reference to packet
+
+    return jpacket;
+}
+// ----- END ACN -----------------------------------------------------------------------------------

@@ -146,6 +146,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         public ListView lvAccess;
         public ImageButton btnClearAccess;
         public CheckBox cbNotify;
+        public CheckBox cbNotifySecurtiyProblem;
 
         public ViewHolder(View itemView) {
             super(itemView);
@@ -203,6 +204,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
             lvAccess = itemView.findViewById(R.id.lvAccess);
             btnClearAccess = itemView.findViewById(R.id.btnClearAccess);
             cbNotify = itemView.findViewById(R.id.cbNotify);
+            cbNotifySecurtiyProblem = itemView.findViewById(R.id.cbNotify);
 
             final View wifiParent = (View) cbWifi.getParent();
             wifiParent.post(new Runnable() {
@@ -598,6 +600,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         final boolean log_app = prefs.getBoolean("log_app", false);
         final boolean filter = prefs.getBoolean("filter", false);
         final boolean notify_access = prefs.getBoolean("notify_access", false);
+        final boolean notify_security_problem = prefs.getBoolean("notify_security_problem", false);
         holder.tvLogging.setText(log_app && filter ? R.string.title_logging_enabled : R.string.title_logging_disabled);
         holder.btnLogging.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -608,6 +611,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 final CheckBox cbLogging = view.findViewById(R.id.cbLogging);
                 final CheckBox cbFiltering = view.findViewById(R.id.cbFiltering);
                 final CheckBox cbNotify = view.findViewById(R.id.cbNotify);
+                final CheckBox cbNotifySecurityProblem = view.findViewById(R.id.cbNotifySecurityProblem);
                 TextView tvFilter4 = view.findViewById(R.id.tvFilter4);
 
                 cbLogging.setChecked(log_app);
@@ -616,15 +620,20 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 tvFilter4.setVisibility(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP ? View.GONE : View.VISIBLE);
                 cbNotify.setChecked(notify_access);
                 cbNotify.setEnabled(log_app);
+                cbNotifySecurityProblem.setChecked(notify_security_problem);
+                cbNotifySecurityProblem.setEnabled(log_app);
 
                 cbLogging.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                     @Override
                     public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
                         prefs.edit().putBoolean("log_app", checked).apply();
                         cbNotify.setEnabled(checked);
+                        cbNotifySecurityProblem.setEnabled(checked);
                         if (!checked) {
                             cbNotify.setChecked(false);
+                            cbNotifySecurityProblem.setChecked(false);
                             prefs.edit().putBoolean("notify_access", false).apply();
+                            prefs.edit().putBoolean("notify_security_problem", false).apply();
                             ServiceSinkhole.reload("changed notify", context, false);
                         }
                         AdapterRule.this.notifyDataSetChanged();
@@ -647,6 +656,15 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                     public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
                         prefs.edit().putBoolean("notify_access", checked).apply();
                         ServiceSinkhole.reload("changed notify", context, false);
+                        AdapterRule.this.notifyDataSetChanged();
+                    }
+                });
+
+                cbNotifySecurityProblem.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
+                        prefs.edit().putBoolean("notify_security_problem", checked).apply();
+                        ServiceSinkhole.reload("changed notify security problem", context, false);
                         AdapterRule.this.notifyDataSetChanged();
                     }
                 });
@@ -827,6 +845,18 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                 updateRule(rule, true, listAll);
             }
         });
+
+        // Notify on security problem
+        holder.cbNotifySecurtiyProblem.setEnabled(prefs.getBoolean("notify_security_problem", false) && rule.apply);
+        holder.cbNotifySecurtiyProblem.setOnCheckedChangeListener(null);
+        holder.cbNotifySecurtiyProblem.setChecked(rule.notify_security_problem);
+        holder.cbNotifySecurtiyProblem.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                rule.notify_security_problem = isChecked;
+                updateRule(rule, true, listAll);
+            }
+        });
     }
 
     @Override
@@ -860,6 +890,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         SharedPreferences roaming = context.getSharedPreferences("roaming", Context.MODE_PRIVATE);
         SharedPreferences lockdown = context.getSharedPreferences("lockdown", Context.MODE_PRIVATE);
         SharedPreferences notify = context.getSharedPreferences("notify", Context.MODE_PRIVATE);
+        SharedPreferences notify_security_problem = context.getSharedPreferences("notify_security_problem", Context.MODE_PRIVATE);
 
         if (rule.wifi_blocked == rule.wifi_default)
             wifi.edit().remove(rule.packageName).apply();
@@ -901,6 +932,11 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
         else
             notify.edit().putBoolean(rule.packageName, rule.notify).apply();
 
+        if (rule.notify_security_problem)
+            notify_security_problem.edit().remove(rule.packageName).apply();
+        else
+            notify_security_problem.edit().putBoolean(rule.packageName, rule.notify_security_problem).apply();
+
         rule.updateChanged(context);
         Log.i(TAG, "Updated " + rule);
 
@@ -916,6 +952,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> im
                     related.roaming = rule.roaming;
                     related.lockdown = rule.lockdown;
                     related.notify = rule.notify;
+                    related.notify_security_problem = rule.notify_security_problem;
                     listModified.add(related);
                 }
         }

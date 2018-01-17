@@ -79,6 +79,8 @@ import com.google.android.gms.ads.MobileAds;
 
 import java.util.List;
 
+import at.tugraz.netguard.ActivitySecurity;
+
 public class ActivityMain extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "NetGuard.Main";
 
@@ -843,6 +845,16 @@ public class ActivityMain extends AppCompatActivity implements SharedPreferences
                 if (Util.canFilter(this))
                     if (IAB.isPurchased(ActivityPro.SKU_LOG, this))
                         startActivity(new Intent(this, ActivityLog.class));
+                    else
+                        startActivity(new Intent(this, ActivityPro.class));
+                else
+                    Toast.makeText(this, R.string.msg_unavailable, Toast.LENGTH_SHORT).show();
+                return true;
+
+            case R.id.menu_security:
+                if (Util.canFilter(this))
+                    if (IAB.isPurchased(ActivityPro.SKU_LOG, this))
+                        startActivity(new Intent(this, ActivitySecurity.class));
                     else
                         startActivity(new Intent(this, ActivityPro.class));
                 else

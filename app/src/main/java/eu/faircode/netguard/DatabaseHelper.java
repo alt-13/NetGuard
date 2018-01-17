@@ -32,25 +32,36 @@ import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.ObjectOutput;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import at.tugraz.netguard.ACNPacket;
+import at.tugraz.netguard.ACNUtils;
+import at.tugraz.netguard.CipherSuiteLookupTable;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "NetGuard.Database";
 
     private static final String DB_NAME = "Netguard";
-    private static final int DB_VERSION = 21;
+    private static final int DB_VERSION = 24;
 
     private static boolean once = true;
     private static List<LogChangedListener> logChangedListeners = new ArrayList<>();
     private static List<AccessChangedListener> accessChangedListeners = new ArrayList<>();
     private static List<ForwardChangedListener> forwardChangedListeners = new ArrayList<>();
+    private static List<KeywordChangedListener> keywordChangedListeners = new ArrayList<>();
+    private static List<ConnectionChangedListener> connectionChangedListener = new ArrayList<>();
 
     private static HandlerThread hthread = null;
     private static Handler handler = null;
@@ -60,6 +71,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private final static int MSG_LOG = 1;
     private final static int MSG_ACCESS = 2;
     private final static int MSG_FORWARD = 3;
+    private final static int MSG_KEYWORD = 4;
+    private final static int MSG_CONNECTION = 5;
 
     private SharedPreferences prefs;
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -123,6 +136,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         createTableDns(db);
         createTableForward(db);
         createTableApp(db);
+        createTableKeywords(db);
+        createTableConnection(db);
     }
 
     @Override
@@ -216,6 +231,36 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ", enabled INTEGER NOT NULL" +
                 ");");
         db.execSQL("CREATE UNIQUE INDEX idx_package ON app(package)");
+    }
+
+    private void createTableKeywords(SQLiteDatabase db) {
+        Log.i(TAG, "Creating keywords table");
+        db.execSQL("CREATE TABLE keywords (" +
+                " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
+                ", uid INTEGER  NOT NULL" +
+                ", keyword TEXT NOT NULL" +
+                ", occurred INTEGER NOT NULL" +
+                ", is_regex INTEGER NOT NULL" +
+                ");");
+        db.execSQL("CREATE UNIQUE INDEX idx_keywords ON keywords(uid, keyword)");
+    }
+
+    private void createTableConnection(SQLiteDatabase db) {
+        Log.i(TAG, "Creating connection table");
+        db.execSQL("CREATE TABLE connection (" +
+                " ID INTEGER PRIMARY KEY AUTOINCREMENT" +
+                ", uid INTEGER NOT NULL" +
+                ", version INTEGER NOT NULL" +
+                ", daddr TEXT NOT NULL" +
+                ", dport INTEGER NOT NULL" +
+                ", time INTEGER NOT NULL" +
+                ", keywords TEXT NOT NULL" +
+                ", cipher_suite INTEGER NOT NULL" +
+                ", cipher_suite_name TEXT NULL" +
+                ", tls_version INTEGER NOT NULL" +
+                ", tls_compression INTEGER NOT NULL" +
+                ");");
+        db.execSQL("CREATE UNIQUE INDEX idx_connection ON connection(uid, version, daddr, dport)");
     }
 
     private boolean columnExists(SQLiteDatabase db, String table, String column) {
@@ -344,6 +389,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             if (oldVersion < 21) {
                 createTableApp(db);
                 oldVersion = 21;
+            }
+            if (oldVersion < 22) {
+                createTableKeywords(db);
+                createTableConnection(db);
+                oldVersion = 22;
+            }
+            if (oldVersion < 23) {
+                if (!columnExists(db, "connection", "cipher_suite_name"))
+                    db.execSQL("ALTER TABLE connection ADD COLUMN cipher_suite_name TEXT NULL");
+                oldVersion = 23;
+            }
+            if (oldVersion < 24) {
+                if (!columnExists(db, "connection", "cipher_suite_name"))
+                    db.execSQL("ALTER TABLE keywords ADD COLUMN is_regex TEXT NOT NULL DEFAULT 0");
+                oldVersion = 24;
             }
 
             if (oldVersion == DB_VERSION) {
@@ -1095,6 +1155,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         forwardChangedListeners.remove(listener);
     }
 
+    public void addKeywordChangedListener(KeywordChangedListener listener) {
+        keywordChangedListeners.add(listener);
+    }
+
+    public void removeKeywordChangedListener(KeywordChangedListener listener) {
+        keywordChangedListeners.remove(listener);
+    }
+
+    public void addConnectionChangedListener(ConnectionChangedListener listener) {
+        connectionChangedListener.add(listener);
+    }
+
+    public void removeConnectionChangedListener(ConnectionChangedListener listener) {
+        connectionChangedListener.remove(listener);
+    }
+
     private void notifyLogChanged() {
         Message msg = handler.obtainMessage();
         msg.what = MSG_LOG;
@@ -1110,6 +1186,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private void notifyForwardChanged() {
         Message msg = handler.obtainMessage();
         msg.what = MSG_FORWARD;
+        handler.sendMessage(msg);
+    }
+
+    private void notifyKeywordChanged(int uid) {
+        Message msg = handler.obtainMessage();
+        msg.what = MSG_KEYWORD;
+        msg.arg1 = uid;
+        handler.sendMessage(msg);
+    }
+
+    private void notifyConnectionChanged() {
+        Message msg = handler.obtainMessage();
+        msg.what = MSG_CONNECTION;
         handler.sendMessage(msg);
     }
 
@@ -1146,7 +1235,313 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 } catch (Throwable ex) {
                     Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
                 }
+
+        } else if (msg.what == MSG_KEYWORD) {
+            for (KeywordChangedListener listener : keywordChangedListeners)
+                try {
+                    listener.onChanged(msg.arg1);
+                } catch (Throwable ex) {
+                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                }
+
+        } else if (msg.what == MSG_CONNECTION) {
+            for (ConnectionChangedListener listener : connectionChangedListener)
+                try {
+                    listener.onChanged();
+                } catch (Throwable ex) {
+                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                }
         }
+    }
+
+    public Cursor getKeywords(int uid) {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            String query = "SELECT ID AS _id, *";
+            query += " FROM keywords";
+            query += " WHERE uid = ?";
+            query += " ORDER BY _id";
+            return db.rawQuery(query, new String[]{Integer.toString(uid)});
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public void insertKeyword(int uid, String keyword, boolean isRegex) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("uid", uid);
+                cv.put("keyword", keyword);
+                cv.put("occurred", false);
+                cv.put("is_regex", isRegex);
+
+                if (db.insert("keywords", null, cv) == -1)
+                    Log.e(TAG, "Insert keyword failed");
+
+                db.setTransactionSuccessful();
+
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyKeywordChanged(uid);
+    }
+
+    public void deleteKeyword(int uid, String keyword) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                db.delete("keywords", "uid = ? AND keyword = ?",
+                        new String[]{Integer.toString(uid), keyword});
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyKeywordChanged(uid);
+    }
+
+    public void deleteKeywordFromConnection(int uid, String keyword) {
+        lock.writeLock().lock();
+        int rows;
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                String query = "SELECT * FROM connection WHERE uid = ?";
+                Cursor cursor = db.rawQuery(query, new String[]{ Integer.toString(uid) });
+                final int col = cursor.getColumnIndex("keywords");
+                final int colVersion = cursor.getColumnIndex("version");
+                final int colDAddr = cursor.getColumnIndex("daddr");
+                final int colDPort = cursor.getColumnIndex("dport");
+                final int colKeywords = cursor.getColumnIndex("keywords");
+
+                if (cursor.getCount() > 0 && colKeywords >= 0) {
+                    cursor.moveToFirst();
+                    while(!cursor.isAfterLast()) {
+                        Object o = ACNUtils.byteArrayToObject(cursor.getBlob(colKeywords));
+                        if (o != null && o instanceof HashSet) {
+                            HashSet<String> keywords = (HashSet<String>) o;
+
+                            if (keywords.contains(keyword)) {
+                                keywords.remove(keyword);
+
+                                ContentValues cv = new ContentValues();
+                                cv.put("keywords", ACNUtils.objectToByteArray(keywords));
+
+                                rows = db.update("connection", cv, "uid = ? AND version = ? AND daddr = ? AND dport = ?",
+                                        new String[]{ Integer.toString(uid),
+                                                Integer.toString(cursor.getInt(colVersion)),
+                                                cursor.getString(colDAddr),
+                                                Integer.toString(cursor.getInt(colDPort))
+                                        });
+
+                                if (rows != 1)
+                                    Log.e(TAG, "Error updating connection after deleting keyword '" + keyword + "'");
+                            }
+                        }
+
+                        cursor.moveToNext();
+                    }
+                }
+                cursor.close();
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyConnectionChanged();
+    }
+
+    public boolean updateConnection(ACNPacket packet, String dname, String cipherSuiteName) {
+        int rows;
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase(); // read + writable
+            HashSet<String> keywords = new HashSet<String>();
+
+            // new keywords have to be added to current keywords
+            String query = "SELECT keywords FROM connection WHERE uid = ? AND version = ? AND daddr = ? AND dport = ?";
+            Cursor c = db.rawQuery(query, new String[]{Integer.toString(packet.uid), Integer.toString(packet.version),
+                    dname == null ? packet.daddr : dname, Integer.toString(packet.dport)});
+
+            // Log.d(TAG, "ACN: updateConnection query - ROWS = " + c.getCount() + " - COLUMNS = " + c.getColumnCount() + " - IndexKeywords = " + c.getColumnIndex("keywords"));
+
+            if (c.getCount() > 0) {
+                c.moveToFirst();
+
+                Object o = ACNUtils.byteArrayToObject(c.getBlob(c.getColumnIndex("keywords")));
+                if (o != null && o instanceof HashSet) {
+                    keywords = (HashSet<String>) o;
+
+                    Log.d(TAG, "ACN: UpdateConnection - " + dname + "/" + packet.dport + " - OldKeywords = " + keywords.size() + " - " + keywords);
+                }
+            }
+            c.close();
+
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("time", packet.time);
+                if (packet.getNumKeywords() > 0) {
+                    keywords.addAll(Arrays.asList(packet.keywords));
+
+                    Log.d(TAG, "ACN: UpdateConnection - " + dname + "/" + packet.dport + " - NewKeywords = " + keywords.size() + " - " + keywords);
+                }
+                cv.put("keywords", ACNUtils.objectToByteArray(keywords));
+
+                cv.put("cipher_suite", packet.cipherSuite);
+                cv.put("cipher_suite_name", cipherSuiteName);
+
+                cv.put("tls_version", packet.tlsVersion);
+                cv.put("tls_compression", packet.tlsCompression);
+
+
+                // There is a segmented index on uid, version, protocol, daddr and dport
+                rows = db.update("connection", cv, "uid = ? AND version = ? AND daddr = ? AND dport = ?",
+                        new String[]{ Integer.toString(packet.uid),
+                                Integer.toString(packet.version),
+                                dname == null ? packet.daddr : dname,
+                                Integer.toString(packet.dport)
+                        });
+
+                if (rows == 0) {
+                    cv.put("uid", packet.uid);
+                    cv.put("version", packet.version);
+                    cv.put("daddr", dname == null ? packet.daddr : dname);
+                    cv.put("dport", packet.dport);
+
+                    if (db.insert("connection", null, cv) == -1)
+                        Log.e(TAG, "Insert connection failed");
+                } else if (rows != 1)
+                    Log.e(TAG, "Update connection failed rows=" + rows);
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyConnectionChanged();
+        return (rows == 0);
+    }
+
+    public void clearConnection(int uid) {
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                db.delete("connection", "uid = ?", new String[]{Integer.toString(uid)});
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyConnectionChanged();
+    }
+
+    public Cursor getConnection(int uid) {
+        lock.readLock().lock();
+        try {
+            SQLiteDatabase db = this.getReadableDatabase();
+            // There is a segmented index on uid
+            // There is no index on time for write performance
+            String query = "SELECT ID AS _id, *";
+            query += " FROM connection";
+            query += " WHERE uid = ?";
+            query += " ORDER BY time DESC";
+            query += " LIMIT 50";
+            return db.rawQuery(query, new String[]{Integer.toString(uid)});
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    public void resetKeywords(int uid) {
+        Log.i(TAG,"Resetting all keyword occurrences for uid = " + uid);
+        int rows;
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("occurred", false);
+
+                // There is a segmented index on uid, keyword
+                rows = db.update("keywords", cv, "uid = ?",
+                        new String[]{ Integer.toString(uid) });
+
+                if (rows < 0)
+                    Log.e(TAG, "Update keywords failed rows=" + rows);
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyAccessChanged();
+    }
+
+    public void updateKeyword(int uid, String keyword, boolean occurred) {
+        int rows;
+
+        lock.writeLock().lock();
+        try {
+            SQLiteDatabase db = this.getWritableDatabase();
+            db.beginTransactionNonExclusive();
+            try {
+                ContentValues cv = new ContentValues();
+                cv.put("occurred", occurred);
+
+                // There is a segmented index on uid, keyword
+                rows = db.update("keywords", cv, "uid = ? AND keyword = ?",
+                        new String[]{
+                                Integer.toString(uid),
+                                keyword});
+
+                if (rows != 1)
+                    Log.e(TAG, "Update keywords failed rows=" + rows);
+
+                db.setTransactionSuccessful();
+            } finally {
+                db.endTransaction();
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
+
+        notifyAccessChanged();
     }
 
     public interface LogChangedListener {
@@ -1158,6 +1553,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     public interface ForwardChangedListener {
+        void onChanged();
+    }
+
+    public interface KeywordChangedListener {
+        void onChanged(int uid);
+    }
+
+    public interface ConnectionChangedListener {
         void onChanged();
     }
 }

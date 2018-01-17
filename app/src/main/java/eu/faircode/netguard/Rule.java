@@ -71,6 +71,7 @@ public class Rule {
 
     public boolean apply = true;
     public boolean notify = true;
+    public boolean notify_security_problem = true;
 
     public boolean relateduids = false;
     public String[] related = null;
@@ -179,6 +180,12 @@ public class Rule {
                     this.enabled = isEnabled(info, context);
 
                     dh.addApp(this.packageName, this.name, this.system, this.internet, this.enabled);
+
+                    // ACN add hardcoded keywords
+                    // uid/keyword is unique key in db, insert will fail for duplicates
+                    dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_imei), false);
+                    dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_imsi), false);
+                    dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_phone_number), false);
                 }
             } finally {
                 if (cursor != null)
@@ -198,6 +205,7 @@ public class Rule {
             SharedPreferences lockdown = context.getSharedPreferences("lockdown", Context.MODE_PRIVATE);
             SharedPreferences apply = context.getSharedPreferences("apply", Context.MODE_PRIVATE);
             SharedPreferences notify = context.getSharedPreferences("notify", Context.MODE_PRIVATE);
+            SharedPreferences notify_security_problem = context.getSharedPreferences("notify_security_problem", Context.MODE_PRIVATE);
 
             // Get settings
             boolean default_wifi = prefs.getBoolean("whitelist_wifi", true);
@@ -335,6 +343,7 @@ public class Rule {
 
                         rule.apply = apply.getBoolean(info.packageName, true);
                         rule.notify = notify.getBoolean(info.packageName, true);
+                        rule.notify_security_problem = notify_security_problem.getBoolean(info.packageName, true);
 
                         // Related packages
                         List<String> listPkg = new ArrayList<>();

@@ -34,6 +34,8 @@ void clear_tcp_data(struct tcp_session *cur) {
         free(p->data);
         free(p);
     }
+
+    freeParserData(cur);
 }
 
 int get_tcp_timeout(const struct tcp_session *t, int sessions, int maxsessions) {
@@ -451,6 +453,49 @@ void check_tcp_socket(const struct arguments *args,
             // Always forward data
             int fwd = 0;
             if (ev->events & EPOLLOUT) {
+
+                // ----- ACN -----------------------------------------------------------------------
+                if (DISPLAY_ADDRESSES) {
+                    uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
+                    uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
+                    log_android(ANDROID_LOG_DEBUG, "ACN: Request - Source = %d.%d.%d.%d",
+                                (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF,
+                                (src_addr >> 8) & 0xFF, src_addr & 0xFF);
+                    log_android(ANDROID_LOG_DEBUG, "ACN: Request - Destination = %d.%d.%d.%d",
+                                (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF,
+                                (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+                }
+
+                /*
+                // Test http parser with split request
+                uint32_t check_address = ((uint32_t)192 << 24 | (uint32_t)252 << 16 | (uint32_t)144 << 8 | (uint32_t)35); // Test Site: http://www.december.com/html/demo/hello.html
+                if (dst_addr == check_address)
+                {
+                    size_t len = s->tcp.forward->len;
+                    struct segment *seg = s->tcp.forward;
+                    uint_t *orig_data = seg->data;
+                    size_t num_parts = 3;
+                    size_t len_part = len / num_parts;
+
+                    for (int i = 0; i < num_parts; ++i)
+                    {
+                        if (i == num_parts - 1)
+                            len_part += (len - num_parts * len_part);
+
+                        log_android(ANDROID_LOG_DEBUG, "ACN: Request - LenPart: %d - LenFull: %d", len_part, len);
+
+                        uint8_t *data = malloc(len_part);
+                        memcpy(data, seg->data + i * len_part, len_part);
+                        seg->data = data;
+                        seg->len = len_part;
+                        processTcpRequest(&s->tcp, seg);
+                        seg->data = orig_data;
+                        seg->len = len;
+                    }
+                }
+                */
+                // ----- END ACN -------------------------------------------------------------------
+
                 // Forward data
                 uint32_t buffer_size = (uint32_t) get_receive_buffer(s);
                 while (s->tcp.forward != NULL &&
@@ -469,6 +514,11 @@ void check_tcp_socket(const struct arguments *args,
                                                                         ? 0
                                                                         : MSG_MORE)));
                     if (sent < 0) {
+                        // ----- ACN ---------------------------------------------------------------
+                        // on error destroy parser data
+                        freeParserData(&s->tcp);
+                        // ----- END ACN -----------------------------------------------------------
+
                         log_android(ANDROID_LOG_ERROR, "%s send error %d: %s",
                                     session, errno, strerror(errno));
                         if (errno == EINTR || errno == EAGAIN) {
@@ -479,6 +529,11 @@ void check_tcp_socket(const struct arguments *args,
                             break;
                         }
                     } else {
+                        // ----- ACN ---------------------------------------------------------------
+                        // process only if successfully sent
+                        processTcpRequest(args, &s->tcp, s->tcp.forward);
+                        // ----- END ACN -----------------------------------------------------------
+
                         fwd = 1;
                         buffer_size -= sent;
                         s->tcp.sent += sent;
@@ -575,6 +630,22 @@ void check_tcp_socket(const struct arguments *args,
                         s->socket = -1;
 
                     } else {
+                        // ----- ACN: --------------------------------------------------------------
+                        if (DISPLAY_ADDRESSES) {
+                            uint32_t src_addr = ntohl(s->tcp.saddr.ip4);
+                            uint32_t dst_addr = ntohl(s->tcp.daddr.ip4);
+                            log_android(ANDROID_LOG_DEBUG, "ACN: Response - Source = %d.%d.%d.%d",
+                                        (src_addr >> 24) & 0xFF, (src_addr >> 16) & 0xFF,
+                                        (src_addr >> 8) & 0xFF, src_addr & 0xFF);
+                            log_android(ANDROID_LOG_DEBUG,
+                                        "ACN: Response - Destination = %d.%d.%d.%d",
+                                        (dst_addr >> 24) & 0xFF, (dst_addr >> 16) & 0xFF,
+                                        (dst_addr >> 8) & 0xFF, dst_addr & 0xFF);
+                        }
+
+                        checkAndProcessTLSHandshake(args, &s->tcp, buffer, (size_t) bytes); // we only care about ServerHello
+                        // ----- END ACN -----------------------------------------------------------
+
                         // Socket read data
                         log_android(ANDROID_LOG_DEBUG, "%s recv bytes %d", session, bytes);
                         s->tcp.received += bytes;
@@ -729,6 +800,9 @@ jboolean handle_tcp(const struct arguments *args,
             s->tcp.state = TCP_LISTEN;
             s->tcp.socks5 = SOCKS5_NONE;
             s->tcp.forward = NULL;
+            // ----- ACN ---------------------------------------------------------------------------
+            s->tcp.parser_data = NULL;
+            // ----- END ACN -----------------------------------------------------------------------
             s->next = NULL;
 
             if (datalen) {
@@ -1178,6 +1252,7 @@ ssize_t write_tcp(const struct arguments *args, const struct tcp_session *cur,
         pseudo.ippseudo_len = htons(sizeof(struct tcphdr) + optlen + datalen);
 
         csum = calc_checksum(0, (uint8_t *) &pseudo, sizeof(struct ippseudo));
+
     } else {
         len = sizeof(struct ip6_hdr) + sizeof(struct tcphdr) + optlen + datalen;
         buffer = malloc(len);
