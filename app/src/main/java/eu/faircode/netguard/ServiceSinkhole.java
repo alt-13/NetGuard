@@ -767,8 +767,6 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                     lock.readLock().lock();
                     if (!mapNotify.containsKey(packet.uid) || mapNotify.get(packet.uid))
                         showAccessNotification(packet.uid);
-                    if (!mapSecurityProblemNotify.containsKey(packet.uid) || mapSecurityProblemNotify.get(packet.uid))
-                        showSecurityProblemNotification(packet.uid);
                     lock.readLock().unlock();
                 }
             }
@@ -817,6 +815,13 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                         cursor.moveToNext();
                     }
                 }
+                lock.readLock().lock();
+                if (!mapSecurityProblemNotify.containsKey(packet.uid) || mapSecurityProblemNotify.get(packet.uid))
+                    if ((CipherSuiteLookupTable.getCipherSuiteInsecurity(packet.cipherSuite) != CipherSuiteLookupTable.Insecurity.NONE) ||
+                        (packet.keywords != null))
+                        showSecurityProblemNotification(packet.uid);
+                lock.readLock().unlock();
+
             }
         }
 

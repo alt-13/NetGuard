@@ -75,7 +75,7 @@ public class CipherSuiteLookupTable {
 
     public static Insecurity getCipherSuiteInsecurity(int cipherSuiteId) {
         String name;
-        if(cipherSuiteId <= 0x001B) {
+        if(0x0000 <= cipherSuiteId && cipherSuiteId <= 0x001B) {
             name = CipherSuiteIdLookup[cipherSuiteId];
         } else if(0x001E <= cipherSuiteId && cipherSuiteId <= 0x0046) {
             int offset = 2;
