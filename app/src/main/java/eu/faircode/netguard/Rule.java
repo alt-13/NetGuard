@@ -186,6 +186,7 @@ public class Rule {
                     dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_imei), false);
                     dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_imsi), false);
                     dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_phone_number), false);
+                    dh.insertKeyword(info.applicationInfo.uid, context.getResources().getString(R.string.keyword_credit_card), false);
                 }
             } finally {
                 if (cursor != null)

@@ -245,7 +245,8 @@ public class ActivitySecurity extends AppCompatActivity implements SharedPrefere
 
                         if (!keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_imei)) &&
                                 !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_phone_number)) &&
-                                !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_imsi))) {
+                                !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_imsi)) &&
+                                !keyword.equals(ActivitySecurity.this.getResources().getString(R.string.keyword_credit_card))) {
 
                             keywords.add(keyword);
                             isRegex.add(cursor.getInt(colRegex));
