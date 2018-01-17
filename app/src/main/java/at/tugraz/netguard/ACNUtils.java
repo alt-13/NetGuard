@@ -256,8 +256,10 @@ public class ACNUtils {
                     @Override
                     public void onClick(View view) {
                         try {
-                            // validate regex
-                            Pattern pattern = Pattern.compile(input.getText().toString());
+                            // validate regex if isRegex is checked, throws exception if it cannot compile
+                            if (cb_regex.isChecked()) {
+                                Pattern pattern = Pattern.compile(input.getText().toString());
+                            }
                             listener.onOk(input.getText().toString(), cb_regex.isChecked());
                             dialog.dismiss();
                         } catch (PatternSyntaxException e) {
